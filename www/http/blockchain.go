@@ -1,18 +1,33 @@
 package http
 
 import (
+	"context"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/pactus-project/pactus/crypto/hash"
+	"github.com/pactus-project/pactus/types/amount"
 	"github.com/pactus-project/pactus/types/vote"
 	pactus "github.com/pactus-project/pactus/www/grpc/gen/go"
 )
 
-func (s *Server) BlockchainHandler(w http.ResponseWriter, _ *http.Request) {
-	res, err := s.blockchain.GetBlockchainInfo(s.ctx,
+func (s *Server) BlockchainHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if s.enableAuth {
+		user, password, ok := r.BasicAuth()
+		if !ok {
+			w.Header().Set("WWW-Authenticate", `Basic realm="restricted", charset="UTF-8"`)
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+
+			return
+		}
+
+		ctx = s.basicAuth(ctx, user, password)
+	}
+
+	res, err := s.blockchain.GetBlockchainInfo(ctx,
 		&pactus.GetBlockchainInfoRequest{})
 	if err != nil {
 		s.writeError(w, err)
@@ -24,8 +39,8 @@ func (s *Server) BlockchainHandler(w http.ResponseWriter, _ *http.Request) {
 	tm.addRowBlockHash("Last Block Hash", res.LastBlockHash)
 	tm.addRowInt("Last Block Height", int(res.LastBlockHeight))
 	tm.addRowString("--- Committee", "---")
-	tm.addRowAmount("Total Power", res.TotalPower)
-	tm.addRowAmount("Committee Power", res.CommitteePower)
+	tm.addRowPower("Total Power", res.TotalPower)
+	tm.addRowPower("Committee Power", res.CommitteePower)
 	for i, val := range res.CommitteeValidators {
 		tm.addRowInt("--- Validator", i+1)
 		tmVal := s.writeValidatorTable(val)
@@ -36,6 +51,19 @@ func (s *Server) BlockchainHandler(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (s *Server) GetBlockByHeightHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if s.enableAuth {
+		user, password, ok := r.BasicAuth()
+		if !ok {
+			w.Header().Set("WWW-Authenticate", `Basic realm="restricted", charset="UTF-8"`)
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+
+			return
+		}
+
+		ctx = s.basicAuth(ctx, user, password)
+	}
+
 	vars := mux.Vars(r)
 	height, err := strconv.ParseInt(vars["height"], 10, 32)
 	if err != nil {
@@ -43,10 +71,23 @@ func (s *Server) GetBlockByHeightHandler(w http.ResponseWriter, r *http.Request)
 
 		return
 	}
-	s.blockByHeight(w, uint32(height))
+	s.blockByHeight(ctx, w, uint32(height))
 }
 
 func (s *Server) GetBlockByHashHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if s.enableAuth {
+		user, password, ok := r.BasicAuth()
+		if !ok {
+			w.Header().Set("WWW-Authenticate", `Basic realm="restricted", charset="UTF-8"`)
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+
+			return
+		}
+
+		ctx = s.basicAuth(ctx, user, password)
+	}
+
 	vars := mux.Vars(r)
 	blockHash, err := hash.FromString(vars["hash"])
 	if err != nil {
@@ -55,7 +96,7 @@ func (s *Server) GetBlockByHashHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, err := s.blockchain.GetBlockHeight(s.ctx,
+	res, err := s.blockchain.GetBlockHeight(ctx,
 		&pactus.GetBlockHeightRequest{Hash: blockHash.Bytes()})
 	if err != nil {
 		s.writeError(w, err)
@@ -63,11 +104,11 @@ func (s *Server) GetBlockByHashHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.blockByHeight(w, res.Height)
+	s.blockByHeight(ctx, w, res.Height)
 }
 
-func (s *Server) blockByHeight(w http.ResponseWriter, blockHeight uint32) {
-	res, err := s.blockchain.GetBlock(s.ctx,
+func (s *Server) blockByHeight(ctx context.Context, w http.ResponseWriter, blockHeight uint32) {
+	res, err := s.blockchain.GetBlock(ctx,
 		&pactus.GetBlockRequest{
 			Height:    blockHeight,
 			Verbosity: pactus.BlockVerbosity_BLOCK_TRANSACTIONS,
@@ -112,8 +153,21 @@ func (s *Server) blockByHeight(w http.ResponseWriter, blockHeight uint32) {
 
 // GetAccountHandler returns a handler to get account by address.
 func (s *Server) GetAccountHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if s.enableAuth {
+		user, password, ok := r.BasicAuth()
+		if !ok {
+			w.Header().Set("WWW-Authenticate", `Basic realm="restricted", charset="UTF-8"`)
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+
+			return
+		}
+
+		ctx = s.basicAuth(ctx, user, password)
+	}
+
 	vars := mux.Vars(r)
-	res, err := s.blockchain.GetAccount(s.ctx,
+	res, err := s.blockchain.GetAccount(ctx,
 		&pactus.GetAccountRequest{Address: vars["address"]})
 	if err != nil {
 		s.writeError(w, err)
@@ -125,7 +179,7 @@ func (s *Server) GetAccountHandler(w http.ResponseWriter, r *http.Request) {
 	tm := newTableMaker()
 	tm.addRowAccAddress("Address", acc.Address)
 	tm.addRowInt("Number", int(acc.Number))
-	tm.addRowAmount("Balance", acc.Balance)
+	tm.addRowAmount("Balance", amount.Amount(acc.Balance))
 	tm.addRowBytes("Hash", acc.Hash)
 
 	s.writeHTML(w, tm.html())
@@ -133,8 +187,21 @@ func (s *Server) GetAccountHandler(w http.ResponseWriter, r *http.Request) {
 
 // GetValidatorHandler returns a handler to get validator by address.
 func (s *Server) GetValidatorHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if s.enableAuth {
+		user, password, ok := r.BasicAuth()
+		if !ok {
+			w.Header().Set("WWW-Authenticate", `Basic realm="restricted", charset="UTF-8"`)
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+
+			return
+		}
+
+		ctx = s.basicAuth(ctx, user, password)
+	}
+
 	vars := mux.Vars(r)
-	res, err := s.blockchain.GetValidator(s.ctx,
+	res, err := s.blockchain.GetValidator(ctx,
 		&pactus.GetValidatorRequest{Address: vars["address"]})
 	if err != nil {
 		s.writeError(w, err)
@@ -148,6 +215,19 @@ func (s *Server) GetValidatorHandler(w http.ResponseWriter, r *http.Request) {
 
 // GetValidatorByNumberHandler returns a handler to get validator by number.
 func (s *Server) GetValidatorByNumberHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if s.enableAuth {
+		user, password, ok := r.BasicAuth()
+		if !ok {
+			w.Header().Set("WWW-Authenticate", `Basic realm="restricted", charset="UTF-8"`)
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+
+			return
+		}
+
+		ctx = s.basicAuth(ctx, user, password)
+	}
+
 	vars := mux.Vars(r)
 
 	num, err := strconv.ParseInt(vars["number"], 10, 32)
@@ -157,9 +237,10 @@ func (s *Server) GetValidatorByNumberHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	res, err := s.blockchain.GetValidatorByNumber(s.ctx, &pactus.GetValidatorByNumberRequest{
-		Number: int32(num),
-	})
+	res, err := s.blockchain.GetValidatorByNumber(ctx,
+		&pactus.GetValidatorByNumberRequest{
+			Number: int32(num),
+		})
 	if err != nil {
 		s.writeError(w, err)
 
@@ -175,7 +256,7 @@ func (s *Server) writeValidatorTable(val *pactus.ValidatorInfo) *tableMaker {
 	tm.addRowString("Public Key", val.PublicKey)
 	tm.addRowValAddress("Address", val.Address)
 	tm.addRowInt("Number", int(val.Number))
-	tm.addRowAmount("Stake", val.Stake)
+	tm.addRowAmount("Stake", amount.Amount(val.Stake))
 	tm.addRowInt("LastBondingHeight", int(val.LastBondingHeight))
 	tm.addRowInt("LastSortitionHeight", int(val.LastSortitionHeight))
 	tm.addRowInt("UnbondingHeight", int(val.UnbondingHeight))
@@ -185,8 +266,21 @@ func (s *Server) writeValidatorTable(val *pactus.ValidatorInfo) *tableMaker {
 	return tm
 }
 
-func (s *Server) ConsensusHandler(w http.ResponseWriter, _ *http.Request) {
-	res, err := s.blockchain.GetConsensusInfo(s.ctx,
+func (s *Server) ConsensusHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if s.enableAuth {
+		user, password, ok := r.BasicAuth()
+		if !ok {
+			w.Header().Set("WWW-Authenticate", `Basic realm="restricted", charset="UTF-8"`)
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+
+			return
+		}
+
+		ctx = s.basicAuth(ctx, user, password)
+	}
+
+	res, err := s.blockchain.GetConsensusInfo(ctx,
 		&pactus.GetConsensusInfoRequest{})
 	if err != nil {
 		s.writeError(w, err)

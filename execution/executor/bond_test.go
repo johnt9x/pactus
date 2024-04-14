@@ -101,7 +101,7 @@ func TestExecuteBondTx(t *testing.T) {
 	assert.Equal(t, td.sandbox.Account(senderAddr).Balance(), senderBalance-(amt+fee))
 	assert.Equal(t, td.sandbox.Validator(receiverAddr).Stake(), amt)
 	assert.Equal(t, td.sandbox.Validator(receiverAddr).LastBondingHeight(), td.sandbox.CurrentHeight())
-	assert.Equal(t, td.sandbox.PowerDelta(), amt)
+	assert.Equal(t, td.sandbox.PowerDelta(), int64(amt))
 	td.checkTotalCoin(t, fee)
 }
 
@@ -159,7 +159,7 @@ func TestStakeExceeded(t *testing.T) {
 
 	exe := NewBondExecutor(true)
 	amt := td.sandbox.TestParams.MaximumStake + 1
-	fee := int64(float64(amt) * td.sandbox.Params().FeeFraction)
+	fee := amt.MulF64(td.sandbox.Params().FeeFraction)
 	senderAddr, senderAcc := td.sandbox.TestStore.RandomTestAcc()
 	senderAcc.AddToBalance(td.sandbox.TestParams.MaximumStake + 1)
 	td.sandbox.UpdateAccount(senderAddr, senderAcc)
@@ -189,5 +189,21 @@ func TestPowerDeltaBond(t *testing.T) {
 	err := exe.Execute(trx, td.sandbox)
 	assert.NoError(t, err, "Ok")
 
-	assert.Equal(t, amt, td.sandbox.PowerDelta())
+	assert.Equal(t, int64(amt), td.sandbox.PowerDelta())
+}
+
+func TestSmallBond(t *testing.T) {
+	td := setup(t)
+	exe := NewBondExecutor(false)
+
+	senderAddr, _ := td.sandbox.TestStore.RandomTestAcc()
+	receiverVal := td.sandbox.TestStore.RandomTestVal()
+	receiverAddr := receiverVal.Address()
+	fee := td.sandbox.Params().MaximumFee
+	lockTime := td.sandbox.CurrentHeight()
+	trx := tx.NewBondTx(lockTime, senderAddr,
+		receiverAddr, nil, 1, fee, "ok")
+
+	err := exe.Execute(trx, td.sandbox)
+	assert.NoError(t, err, "Ok")
 }

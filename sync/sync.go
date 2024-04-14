@@ -31,6 +31,7 @@ import (
 
 type synchronizer struct {
 	ctx         context.Context
+	cancel      context.CancelFunc
 	config      *Config
 	valKeys     []*bls.ValidatorKey
 	state       state.Facade
@@ -53,8 +54,10 @@ func NewSynchronizer(
 	net network.Network,
 	broadcastCh <-chan message.Message,
 ) (Synchronizer, error) {
+	ctx, cancel := context.WithCancel(context.Background())
 	sync := &synchronizer{
-		ctx:         context.Background(), // TODO, set proper context
+		ctx:         ctx,
+		cancel:      cancel,
 		config:      conf,
 		valKeys:     valKeys,
 		state:       st,
@@ -110,7 +113,8 @@ func (sync *synchronizer) Start() error {
 }
 
 func (sync *synchronizer) Stop() {
-	sync.ctx.Done()
+	sync.cancel()
+	sync.logger.Debug("context closed", "reason", sync.ctx.Err())
 }
 
 func (sync *synchronizer) stateHeight() uint32 {
@@ -145,7 +149,7 @@ func (sync *synchronizer) prepareBundle(msg message.Message) *bundle.Bundle {
 			bdl.Flags = util.SetFlag(bdl.Flags, bundle.BundleFlagNetworkMainnet)
 		case genesis.Testnet:
 			bdl.Flags = util.SetFlag(bdl.Flags, bundle.BundleFlagNetworkTestnet)
-		default:
+		case genesis.Localnet:
 			// It's localnet and for testing purpose only
 		}
 
@@ -164,17 +168,14 @@ func (sync *synchronizer) sendTo(msg message.Message, to peer.ID) {
 
 		err := sync.network.SendTo(data, to)
 		if err != nil {
-			sync.logger.Debug("error on sending the bundle, closing the connection",
-				"bundle", bdl, "to", to, "error", err)
-
-			sync.network.CloseConnection(to)
+			sync.logger.Warn("error on sending the bundle", "bundle", bdl, "to", to, "error", err)
 
 			return
 		}
 
 		sync.peerSet.UpdateLastSent(to)
 		sync.peerSet.IncreaseSentCounters(msg.Type(), int64(len(data)), &to)
-		sync.logger.Info("bundle sent", "bundle", bdl, "to", to)
+		sync.logger.Debug("bundle sent", "bundle", bdl, "to", to)
 	}
 }
 
@@ -322,9 +323,8 @@ func (sync *synchronizer) processProtocolsEvent(pe *network.ProtocolsEvents) {
 	sync.logger.Debug("processing protocols event", "pid", pe.PeerID, "protocols", pe.Protocols)
 
 	sync.peerSet.UpdateProtocols(pe.PeerID, pe.Protocols)
-	if pe.SupportStream {
-		sync.sayHello(pe.PeerID)
-	}
+
+	sync.sayHello(pe.PeerID)
 }
 
 func (sync *synchronizer) processDisconnectEvent(de *network.DisconnectEvent) {
@@ -338,7 +338,7 @@ func (sync *synchronizer) processIncomingBundle(bdl *bundle.Bundle, from peer.ID
 		return nil
 	}
 
-	sync.logger.Info("received a bundle", "from", from, "bundle", bdl)
+	sync.logger.Debug("received a bundle", "from", from, "bundle", bdl)
 	h := sync.handlers[bdl.Message.Type()]
 	if h == nil {
 		return fmt.Errorf("invalid message type: %v", bdl.Message.Type())
@@ -356,42 +356,32 @@ func (sync *synchronizer) String() string {
 // updateBlockchain checks whether the node's height is shorter than the network's height or not.
 // If the node's height is shorter than the network's height by more than two hours (720 blocks),
 // it should start downloading blocks from the network's nodes.
-// Otherwise, the node can request the latest blocks from the network.
+// Otherwise, the node can request the latest blocks from any nodes.
 func (sync *synchronizer) updateBlockchain() {
 	// Maybe we have some blocks inside the cache?
 	_ = sync.tryCommitBlocks()
 
-	// If we have the last block inside the cache but no certificate,
-	// we need to download the next block.
-	downloadHeight := sync.state.LastBlockHeight()
-	downloadHeight++
-
-	if sync.cache.HasBlockInCache(downloadHeight) {
-		downloadHeight++
-	}
-
 	// Check if we have any expired sessions
 	sync.peerSet.SetExpiredSessionsAsUncompleted()
 
-	sync.peerSet.IterateSessions(func(ssn *session.Session) bool {
+	// Try to re-download the blocks for uncompleted sessions
+	sessions := sync.peerSet.Sessions()
+	for _, ssn := range sessions {
 		if ssn.Status == session.Uncompleted {
 			sync.logger.Info("uncompleted block request, re-download",
 				"sid", ssn.SessionID, "pid", ssn.PeerID,
 				"stats", sync.peerSet.SessionStats())
 
-			// Try to re-download the blocks from this closed session
-			sent := sync.sendBlockRequestToRandomPeer(ssn.From, ssn.Count, true)
+			sent := sync.sendBlockRequestToRandomPeer(ssn.From, ssn.Count, false)
 			if !sent {
-				return true
+				break
 			}
 		}
+	}
 
-		return false
-	})
-
-	// First, let's check if we have any open sessions.
-	// If there are any open sessions, we should wait for them to be closed.
-	// Otherwise, we can request the same blocks from different peers.
+	// Check if there are any open sessions.
+	// If open sessions exist, we should wait for them to close.
+	// Otherwise, we might request to download the same blocks from different peers.
 	// TODO: write test for me
 	if sync.peerSet.HasAnyOpenSession() {
 		sync.logger.Debug("we have open session",
@@ -411,6 +401,15 @@ func (sync *synchronizer) updateBlockchain() {
 	if numOfBlocks <= 1 {
 		// We are sync
 		return
+	}
+
+	downloadHeight := sync.state.LastBlockHeight()
+	downloadHeight++
+
+	if sync.cache.HasBlockInCache(downloadHeight) {
+		// The last block exists inside the cache, without the certificate.
+		// Ignore downloading this block again.
+		downloadHeight++
 	}
 
 	sync.logger.Info("start syncing with the network",
@@ -438,6 +437,19 @@ func (sync *synchronizer) downloadBlocks(from uint32, onlyNodeNetwork bool) {
 }
 
 func (sync *synchronizer) sendBlockRequestToRandomPeer(from, count uint32, onlyNodeNetwork bool) bool {
+	// Prevent downloading blocks that might be cached before
+	for sync.cache.HasBlockInCache(from) {
+		from++
+		count--
+
+		if count == 0 {
+			// we have blocks inside the cache
+			sync.logger.Debug("sending download request ignored", "from", from+1)
+
+			return true
+		}
+	}
+
 	for i := sync.peerSet.NumberOfSessions(); i < sync.config.MaxSessions; i++ {
 		p := sync.peerSet.GetRandomPeer()
 		if p == nil {
@@ -446,14 +458,16 @@ func (sync *synchronizer) sendBlockRequestToRandomPeer(from, count uint32, onlyN
 
 		// Don't open a new session if we already have an open session with the same peer.
 		// This helps us to get blocks from different peers.
-		// TODO: write test for me
 		if sync.peerSet.HasOpenSession(p.PeerID) {
 			continue
 		}
 
 		// We haven't completed the handshake with this peer.
-		// Maybe it is a gossip peer.
 		if !p.IsKnownOrTrusty() {
+			if onlyNodeNetwork {
+				sync.network.CloseConnection(p.PeerID)
+			}
+
 			continue
 		}
 
@@ -465,27 +479,17 @@ func (sync *synchronizer) sendBlockRequestToRandomPeer(from, count uint32, onlyN
 			continue
 		}
 
-		for sync.cache.HasBlockInCache(from) {
-			from++
-			count--
-
-			if count == 0 {
-				// we have blocks inside the cache
-				sync.logger.Debug("sending download request ignored", "from", from+1)
-
-				return true
-			}
-		}
-
-		sync.logger.Debug("sending download request", "from", from+1, "count", count, "pid", p.PeerID)
 		ssn := sync.peerSet.OpenSession(p.PeerID, from, count)
 		msg := message.NewBlocksRequestMessage(ssn.SessionID, from, count)
 		sync.sendTo(msg, p.PeerID)
 
+		sync.logger.Info("blocks request sent",
+			"from", from+1, "count", count, "pid", p.PeerID, "sid", ssn.SessionID)
+
 		return true
 	}
 
-	sync.logger.Warn("unable to open a new session, perhaps not enough connections",
+	sync.logger.Warn("unable to open a new session",
 		"stats", sync.peerSet.SessionStats())
 
 	return false

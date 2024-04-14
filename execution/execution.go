@@ -1,13 +1,15 @@
 package execution
 
 import (
+	"math"
+
 	"github.com/pactus-project/pactus/execution/executor"
 	"github.com/pactus-project/pactus/sandbox"
+	"github.com/pactus-project/pactus/types/amount"
 	"github.com/pactus-project/pactus/types/param"
 	"github.com/pactus-project/pactus/types/tx"
 	"github.com/pactus-project/pactus/types/tx/payload"
 	"github.com/pactus-project/pactus/util"
-	"github.com/pactus-project/pactus/util/errors"
 )
 
 type Executor interface {
@@ -103,24 +105,51 @@ func (exe *Execution) checkLockTime(trx *tx.Tx, sb sandbox.Sandbox) error {
 }
 
 func (exe *Execution) checkFee(trx *tx.Tx, sb sandbox.Sandbox) error {
-	if trx.IsFreeTx() {
+	var fee amount.Amount
+	if trx.IsSubsidyTx() {
+		fee = 0
+	} else {
+		fee = CalculateFee(trx.Payload().Value(), trx.Payload().Type(), sb.Params())
+	}
+
+	if fee == 0 {
 		if trx.Fee() != 0 {
-			return errors.Errorf(errors.ErrInvalidFee, "fee is wrong, expected: 0, got: %v", trx.Fee())
+			return InvalidFeeError{
+				Fee:      trx.Fee(),
+				Expected: fee,
+			}
 		}
 	} else {
-		fee := CalculateFee(trx.Payload().Value(), sb.Params())
-		if trx.Fee() != fee {
-			return errors.Errorf(errors.ErrInvalidFee, "fee is wrong, expected: %v, got: %v", fee, trx.Fee())
+		// Check if the absolute difference between the calculated fee and the transaction fee
+		// is greater than 1 PAC, indicating an invalid fee.
+		if math.Abs(float64(fee-trx.Fee())) > 1 {
+			return InvalidFeeError{
+				Fee:      trx.Fee(),
+				Expected: fee,
+			}
 		}
 	}
 
 	return nil
 }
 
-func CalculateFee(amt int64, params *param.Params) int64 {
-	fee := int64(float64(amt) * params.FeeFraction)
-	fee = util.Max(fee, params.MinimumFee)
-	fee = util.Min(fee, params.MaximumFee)
+func CalculateFee(amt amount.Amount, payloadType payload.Type, params *param.Params) amount.Amount {
+	switch payloadType {
+	case payload.TypeUnbond,
+		payload.TypeSortition:
 
-	return fee
+		return 0
+
+	case payload.TypeTransfer,
+		payload.TypeBond,
+		payload.TypeWithdraw:
+		fee := amt.MulF64(params.FeeFraction)
+		fee = util.Max(fee, params.MinimumFee)
+		fee = util.Min(fee, params.MaximumFee)
+
+		return fee
+
+	default:
+		return 0
+	}
 }

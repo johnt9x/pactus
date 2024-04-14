@@ -27,6 +27,72 @@ function deserialize_pactus_CreateWalletResponse(buffer_arg) {
   return wallet_pb.CreateWalletResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pactus_GetAddressHistoryRequest(arg) {
+  if (!(arg instanceof wallet_pb.GetAddressHistoryRequest)) {
+    throw new Error('Expected argument of type pactus.GetAddressHistoryRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pactus_GetAddressHistoryRequest(buffer_arg) {
+  return wallet_pb.GetAddressHistoryRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pactus_GetAddressHistoryResponse(arg) {
+  if (!(arg instanceof wallet_pb.GetAddressHistoryResponse)) {
+    throw new Error('Expected argument of type pactus.GetAddressHistoryResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pactus_GetAddressHistoryResponse(buffer_arg) {
+  return wallet_pb.GetAddressHistoryResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pactus_GetNewAddressRequest(arg) {
+  if (!(arg instanceof wallet_pb.GetNewAddressRequest)) {
+    throw new Error('Expected argument of type pactus.GetNewAddressRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pactus_GetNewAddressRequest(buffer_arg) {
+  return wallet_pb.GetNewAddressRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pactus_GetNewAddressResponse(arg) {
+  if (!(arg instanceof wallet_pb.GetNewAddressResponse)) {
+    throw new Error('Expected argument of type pactus.GetNewAddressResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pactus_GetNewAddressResponse(buffer_arg) {
+  return wallet_pb.GetNewAddressResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pactus_GetTotalBalanceRequest(arg) {
+  if (!(arg instanceof wallet_pb.GetTotalBalanceRequest)) {
+    throw new Error('Expected argument of type pactus.GetTotalBalanceRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pactus_GetTotalBalanceRequest(buffer_arg) {
+  return wallet_pb.GetTotalBalanceRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pactus_GetTotalBalanceResponse(arg) {
+  if (!(arg instanceof wallet_pb.GetTotalBalanceResponse)) {
+    throw new Error('Expected argument of type pactus.GetTotalBalanceResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pactus_GetTotalBalanceResponse(buffer_arg) {
+  return wallet_pb.GetTotalBalanceResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pactus_GetValidatorAddressRequest(arg) {
   if (!(arg instanceof wallet_pb.GetValidatorAddressRequest)) {
     throw new Error('Expected argument of type pactus.GetValidatorAddressRequest');
@@ -198,7 +264,8 @@ unloadWallet: {
     responseSerialize: serialize_pactus_UnloadWalletResponse,
     responseDeserialize: deserialize_pactus_UnloadWalletResponse,
   },
-  // LockWallet locks a currently loaded wallet with the provided password and timeout.
+  // LockWallet locks a currently loaded wallet with the provided password and
+// timeout.
 lockWallet: {
     path: '/pactus.Wallet/LockWallet',
     requestStream: false,
@@ -210,7 +277,8 @@ lockWallet: {
     responseSerialize: serialize_pactus_LockWalletResponse,
     responseDeserialize: deserialize_pactus_LockWalletResponse,
   },
-  // UnlockWallet unlocks a locked wallet with the provided password and timeout.
+  // UnlockWallet unlocks a locked wallet with the provided password and
+// timeout.
 unlockWallet: {
     path: '/pactus.Wallet/UnlockWallet',
     requestStream: false,
@@ -221,6 +289,18 @@ unlockWallet: {
     requestDeserialize: deserialize_pactus_UnlockWalletRequest,
     responseSerialize: serialize_pactus_UnlockWalletResponse,
     responseDeserialize: deserialize_pactus_UnlockWalletResponse,
+  },
+  // GetTotalBalance returns the total available balance of the wallet.
+getTotalBalance: {
+    path: '/pactus.Wallet/GetTotalBalance',
+    requestStream: false,
+    responseStream: false,
+    requestType: wallet_pb.GetTotalBalanceRequest,
+    responseType: wallet_pb.GetTotalBalanceResponse,
+    requestSerialize: serialize_pactus_GetTotalBalanceRequest,
+    requestDeserialize: deserialize_pactus_GetTotalBalanceRequest,
+    responseSerialize: serialize_pactus_GetTotalBalanceResponse,
+    responseDeserialize: deserialize_pactus_GetTotalBalanceResponse,
   },
   // SignRawTransaction signs a raw transaction for a specified wallet.
 signRawTransaction: {
@@ -234,7 +314,8 @@ signRawTransaction: {
     responseSerialize: serialize_pactus_SignRawTransactionResponse,
     responseDeserialize: deserialize_pactus_SignRawTransactionResponse,
   },
-  // GetValidatorAddress retrieves the validator address associated with a public key.
+  // GetValidatorAddress retrieves the validator address associated with a
+// public key.
 getValidatorAddress: {
     path: '/pactus.Wallet/GetValidatorAddress',
     requestStream: false,
@@ -245,6 +326,30 @@ getValidatorAddress: {
     requestDeserialize: deserialize_pactus_GetValidatorAddressRequest,
     responseSerialize: serialize_pactus_GetValidatorAddressResponse,
     responseDeserialize: deserialize_pactus_GetValidatorAddressResponse,
+  },
+  // GetNewAddress generates a new address for the specified wallet.
+getNewAddress: {
+    path: '/pactus.Wallet/GetNewAddress',
+    requestStream: false,
+    responseStream: false,
+    requestType: wallet_pb.GetNewAddressRequest,
+    responseType: wallet_pb.GetNewAddressResponse,
+    requestSerialize: serialize_pactus_GetNewAddressRequest,
+    requestDeserialize: deserialize_pactus_GetNewAddressRequest,
+    responseSerialize: serialize_pactus_GetNewAddressResponse,
+    responseDeserialize: deserialize_pactus_GetNewAddressResponse,
+  },
+  // GetAddressHistory retrieve transaction history of an address.
+getAddressHistory: {
+    path: '/pactus.Wallet/GetAddressHistory',
+    requestStream: false,
+    responseStream: false,
+    requestType: wallet_pb.GetAddressHistoryRequest,
+    responseType: wallet_pb.GetAddressHistoryResponse,
+    requestSerialize: serialize_pactus_GetAddressHistoryRequest,
+    requestDeserialize: deserialize_pactus_GetAddressHistoryRequest,
+    responseSerialize: serialize_pactus_GetAddressHistoryResponse,
+    responseDeserialize: deserialize_pactus_GetAddressHistoryResponse,
   },
 };
 

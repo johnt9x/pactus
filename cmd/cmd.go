@@ -1,3 +1,4 @@
+//nolint:forbidigo // enable printing function for cmd package
 package cmd
 
 import (
@@ -27,6 +28,7 @@ import (
 	"github.com/pactus-project/pactus/util"
 	"github.com/pactus-project/pactus/wallet"
 	"github.com/pactus-project/pactus/wallet/addresspath"
+	"github.com/pactus-project/pactus/wallet/vault"
 )
 
 const (
@@ -100,7 +102,7 @@ func PromptConfirm(label string) bool {
 		os.Exit(1)
 	}
 
-	if len(result) > 0 && strings.ToUpper(result[:1]) == "Y" {
+	if result != "" && strings.ToUpper(result[:1]) == "Y" {
 		return true
 	}
 
@@ -275,7 +277,6 @@ func TrapSignal(cleanupFunc func()) {
 	}()
 }
 
-// TODO: write test for me.
 func CreateNode(numValidators int, chain genesis.ChainType, workingDir string,
 	mnemonic string, walletPassword string,
 ) ([]string, []string, error) {
@@ -288,20 +289,20 @@ func CreateNode(numValidators int, chain genesis.ChainType, workingDir string,
 
 	validatorAddrs := []string{}
 	for i := 0; i < numValidators; i++ {
-		addr, err := walletInstance.NewValidatorAddress(fmt.Sprintf("Validator address %v", i+1))
+		addressInfo, err := walletInstance.NewValidatorAddress(fmt.Sprintf("Validator address %v", i+1))
 		if err != nil {
 			return nil, nil, err
 		}
-		validatorAddrs = append(validatorAddrs, addr)
+		validatorAddrs = append(validatorAddrs, addressInfo.Address)
 	}
 
 	rewardAddrs := []string{}
 	for i := 0; i < numValidators; i++ {
-		addr, err := walletInstance.NewBLSAccountAddress(fmt.Sprintf("Reward address %v", i+1))
+		addressInfo, err := walletInstance.NewBLSAccountAddress(fmt.Sprintf("Reward address %v", i+1))
 		if err != nil {
 			return nil, nil, err
 		}
-		rewardAddrs = append(rewardAddrs, addr)
+		rewardAddrs = append(rewardAddrs, addressInfo.Address)
 	}
 
 	confPath := PactusConfigPath(workingDir)
@@ -313,8 +314,8 @@ func CreateNode(numValidators int, chain genesis.ChainType, workingDir string,
 		if err := genDoc.SaveToFile(genPath); err != nil {
 			return nil, nil, err
 		}
-		conf := config.DefaultConfigMainnet()
-		if err := conf.Save(confPath); err != nil {
+		err := config.SaveMainnetConfig(confPath)
+		if err != nil {
 			return nil, nil, err
 		}
 	case genesis.Testnet:
@@ -328,6 +329,9 @@ func CreateNode(numValidators int, chain genesis.ChainType, workingDir string,
 		}
 
 	case genesis.Localnet:
+		if numValidators < 4 {
+			return nil, nil, fmt.Errorf("LocalNeed needs at least 4 validators")
+		}
 		genDoc := makeLocalGenesis(*walletInstance)
 		if err := genDoc.SaveToFile(genPath); err != nil {
 			return nil, nil, err
@@ -396,65 +400,14 @@ func StartNode(workingDir string, passwordFetcher func(*wallet.Wallet) (string, 
 		valAddrsInfo = valAddrsInfo[:32]
 	}
 
-	if len(conf.Node.RewardAddresses) > 0 &&
-		len(conf.Node.RewardAddresses) != len(valAddrsInfo) {
-		return nil, nil, fmt.Errorf("reward addresses should be %v", len(valAddrsInfo))
-	}
-
-	valAddrs := make([]string, len(valAddrsInfo))
-	for i := 0; i < len(valAddrs); i++ {
-		valAddr, _ := crypto.AddressFromString(valAddrsInfo[i].Address)
-		if !valAddr.IsValidatorAddress() {
-			return nil, nil, fmt.Errorf("invalid validator address: %s", valAddrsInfo[i].Address)
-		}
-		valAddrs[i] = valAddr.String()
-	}
-
-	valKeys := make([]*bls.ValidatorKey, len(valAddrsInfo))
-	password, ok := passwordFetcher(walletInstance)
-	if !ok {
-		return nil, nil, fmt.Errorf("aborted")
-	}
-	prvKeys, err := walletInstance.PrivateKeys(password, valAddrs)
+	rewardAddrs, err := MakeRewardAddresses(walletInstance, valAddrsInfo, conf.Node.RewardAddresses)
 	if err != nil {
 		return nil, nil, err
 	}
-	for i, prv := range prvKeys {
-		valKeys[i] = bls.NewValidatorKey(prv.(*bls.PrivateKey))
-	}
 
-	// Create reward addresses
-	rewardAddrs := make([]crypto.Address, 0, len(valAddrsInfo))
-	if len(conf.Node.RewardAddresses) != 0 {
-		for _, addrStr := range conf.Node.RewardAddresses {
-			addr, _ := crypto.AddressFromString(addrStr)
-			rewardAddrs = append(rewardAddrs, addr)
-		}
-	} else {
-		for i := 0; i < len(valAddrsInfo); i++ {
-			valAddrPath, _ := addresspath.NewPathFromString(valAddrsInfo[i].Path)
-			accAddrPath := addresspath.NewPath(
-				valAddrPath.Purpose(),
-				valAddrPath.CoinType(),
-				uint32(crypto.AddressTypeBLSAccount)+hdkeychain.HardenedKeyStart,
-				valAddrPath.AddressIndex())
-
-			addrInfo := walletInstance.AddressFromPath(accAddrPath.String())
-			if addrInfo == nil {
-				return nil, nil, fmt.Errorf("unable to find reward address for: %s [%s]",
-					valAddrsInfo[i].Address, accAddrPath)
-			}
-
-			addr, _ := crypto.AddressFromString(addrInfo.Address)
-			rewardAddrs = append(rewardAddrs, addr)
-		}
-	}
-
-	// Check if reward addresses are account address
-	for _, addr := range rewardAddrs {
-		if !addr.IsAccountAddress() {
-			return nil, nil, fmt.Errorf("reward address is not an account address: %s", addr)
-		}
+	valKeys, err := MakeValidatorKey(walletInstance, valAddrsInfo, passwordFetcher)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	nodeInstance, err := node.NewNode(gen, conf, valKeys, rewardAddrs)
@@ -573,4 +526,83 @@ func RecoverConfig(confPath string, defConf *config.Config, chainType genesis.Ch
 	}
 
 	return conf, err
+}
+
+func MakeRewardAddresses(walletInstance *wallet.Wallet,
+	valAddrsInfo []vault.AddressInfo, confRewardAddresses []string,
+) ([]crypto.Address, error) {
+	if len(confRewardAddresses) > 1 &&
+		len(confRewardAddresses) != len(valAddrsInfo) {
+		return nil, fmt.Errorf("reward addresses should be %v", len(valAddrsInfo))
+	}
+
+	// Create reward addresses
+	rewardAddrs := make([]crypto.Address, 0, len(valAddrsInfo))
+	if len(confRewardAddresses) != 0 {
+		for _, addrStr := range confRewardAddresses {
+			addr, _ := crypto.AddressFromString(addrStr)
+			rewardAddrs = append(rewardAddrs, addr)
+		}
+
+		if len(rewardAddrs) == 1 {
+			for i := 1; i < len(valAddrsInfo); i++ {
+				rewardAddrs = append(rewardAddrs, rewardAddrs[0])
+			}
+		}
+	} else {
+		for i := 0; i < len(valAddrsInfo); i++ {
+			valAddrPath, _ := addresspath.FromString(valAddrsInfo[i].Path)
+			accAddrPath := addresspath.NewPath(
+				valAddrPath.Purpose(),
+				valAddrPath.CoinType(),
+				uint32(crypto.AddressTypeBLSAccount)+hdkeychain.HardenedKeyStart,
+				valAddrPath.AddressIndex())
+
+			addrInfo := walletInstance.AddressFromPath(accAddrPath.String())
+			if addrInfo == nil {
+				return nil, fmt.Errorf("unable to find reward address for: %s [%s]",
+					valAddrsInfo[i].Address, accAddrPath)
+			}
+
+			addr, _ := crypto.AddressFromString(addrInfo.Address)
+			rewardAddrs = append(rewardAddrs, addr)
+		}
+	}
+
+	// Check if reward addresses are account address
+	for _, addr := range rewardAddrs {
+		if !addr.IsAccountAddress() {
+			return nil, fmt.Errorf("reward address is not an account address: %s", addr)
+		}
+	}
+
+	return rewardAddrs, nil
+}
+
+func MakeValidatorKey(walletInstance *wallet.Wallet, valAddrsInfo []vault.AddressInfo,
+	passwordFetcher func(*wallet.Wallet) (string, bool),
+) ([]*bls.ValidatorKey, error) {
+	valAddrs := make([]string, len(valAddrsInfo))
+	for i := 0; i < len(valAddrs); i++ {
+		valAddr, _ := crypto.AddressFromString(valAddrsInfo[i].Address)
+		if !valAddr.IsValidatorAddress() {
+			return nil, fmt.Errorf("invalid validator address: %s", valAddrsInfo[i].Address)
+		}
+		valAddrs[i] = valAddr.String()
+	}
+
+	valKeys := make([]*bls.ValidatorKey, len(valAddrsInfo))
+	password, ok := passwordFetcher(walletInstance)
+	if !ok {
+		return nil, fmt.Errorf("aborted")
+	}
+	prvKeys, err := walletInstance.PrivateKeys(password, valAddrs)
+	if err != nil {
+		return nil, err
+	}
+	for i, prv := range prvKeys {
+		valKeys[i] = bls.NewValidatorKey(prv.(*bls.PrivateKey))
+	}
+
+	return valKeys, nil
 }

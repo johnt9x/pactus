@@ -7,8 +7,8 @@ import (
 	"fmt"
 
 	"github.com/gotk3/gotk3/gtk"
+	"github.com/pactus-project/pactus/types/amount"
 	"github.com/pactus-project/pactus/types/tx/payload"
-	"github.com/pactus-project/pactus/util"
 	"github.com/pactus-project/pactus/wallet"
 )
 
@@ -27,6 +27,7 @@ func broadcastTransactionWithdraw(wlt *wallet.Wallet) {
 	receiverHint := getLabelObj(builder, "id_hint_receiver")
 	stakeEntry := getEntryObj(builder, "id_entry_stake")
 	stakeHint := getLabelObj(builder, "id_hint_stake")
+	memoEntry := getEntryObj(builder, "id_entry_memo")
 	getButtonObj(builder, "id_button_cancel").SetImage(CancelIcon())
 	getButtonObj(builder, "id_button_send").SetImage(SendIcon())
 
@@ -35,8 +36,7 @@ func broadcastTransactionWithdraw(wlt *wallet.Wallet) {
 	}
 	validatorEntry.SetActive(0)
 
-	// TODO: we need something like: wlt.AllAccountAddresses()
-	for _, ai := range wlt.AddressInfos() {
+	for _, ai := range wlt.AllAccountAddresses() {
 		receiverCombo.Append(ai.Address, ai.Address)
 	}
 
@@ -61,15 +61,20 @@ func broadcastTransactionWithdraw(wlt *wallet.Wallet) {
 		receiverEntry, _ := receiverCombo.GetEntry()
 		receiver, _ := receiverEntry.GetText()
 		amountStr, _ := stakeEntry.GetText()
+		memo, _ := memoEntry.GetText()
 
-		amount, err := util.StringToChange(amountStr)
+		amt, err := amount.FromString(amountStr)
 		if err != nil {
 			errorCheck(err)
 
 			return
 		}
 
-		trx, err := wlt.MakeWithdrawTx(sender, receiver, amount)
+		opts := []wallet.TxOption{
+			wallet.OptionMemo(memo),
+		}
+
+		trx, err := wlt.MakeWithdrawTx(sender, receiver, amt, opts...)
 		if err != nil {
 			errorCheck(err)
 
@@ -77,14 +82,15 @@ func broadcastTransactionWithdraw(wlt *wallet.Wallet) {
 		}
 		msg := fmt.Sprintf(`
 You are going to sign and broadcast this transaction:
-
-From:   %v
-To:     %v
-Amount: %v
-Fee:    %v
-
-THIS ACTION IS NOT REVERSIBLE. Do you want to continue?`, sender, receiver,
-			util.ChangeToString(amount), util.ChangeToString(trx.Fee()))
+<tt>
+From:   %s
+To:     %s
+Amount: %s
+Memo:   %s
+Fee:    %s
+</tt>
+<b>THIS ACTION IS NOT REVERSIBLE. Do you want to continue?</b>`,
+			sender, receiver, amt, trx.Fee(), trx.Memo())
 
 		signAndBroadcastTransaction(dlg, msg, wlt, trx)
 

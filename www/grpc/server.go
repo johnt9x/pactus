@@ -15,7 +15,7 @@ import (
 
 type Server struct {
 	ctx      context.Context
-	cancel   func()
+	cancel   context.CancelFunc
 	config   *Config
 	listener net.Listener
 	address  string
@@ -62,7 +62,13 @@ func (s *Server) StartServer() error {
 }
 
 func (s *Server) startListening(listener net.Listener) error {
-	grpcServer := grpc.NewServer()
+	opts := make([]grpc.UnaryServerInterceptor, 0)
+
+	if s.config.BasicAuth != "" {
+		opts = append(opts, BasicAuth(s.config.BasicAuth))
+	}
+
+	grpcServer := grpc.NewServer(grpc.ChainUnaryInterceptor(opts...))
 
 	blockchainServer := newBlockchainServer(s)
 	transactionServer := newTransactionServer(s)
@@ -95,6 +101,7 @@ func (s *Server) startListening(listener net.Listener) error {
 
 func (s *Server) StopServer() {
 	s.cancel()
+	s.logger.Debug("context closed", "reason", s.ctx.Err())
 
 	if s.grpc != nil {
 		s.grpc.Stop()

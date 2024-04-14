@@ -14,10 +14,6 @@ import (
 	"github.com/pactus-project/pactus/util"
 )
 
-// TODO:
-// - Add tests for peerset
-// - Is it thread safe (GetPeer and IteratePeers) ??
-
 type PeerSet struct {
 	lk sync.RWMutex
 
@@ -404,6 +400,9 @@ func (ps *PeerSet) StartedAt() time.Time {
 }
 
 func (ps *PeerSet) IteratePeers(consumer func(peer *Peer) (stop bool)) {
+	ps.lk.RLock()
+	defer ps.lk.RUnlock()
+
 	for _, p := range ps.peers {
 		stopped := consumer(p)
 		if stopped {
@@ -412,40 +411,43 @@ func (ps *PeerSet) IteratePeers(consumer func(peer *Peer) (stop bool)) {
 	}
 }
 
-func (ps *PeerSet) IterateSessions(consumer func(s *session.Session) (stop bool)) {
+func (ps *PeerSet) Sessions() []*session.Session {
+	ps.lk.RLock()
+	defer ps.lk.RUnlock()
+
+	sessions := make([]*session.Session, 0, len(ps.sessions))
+
 	for _, ssn := range ps.sessions {
-		stopped := consumer(ssn)
-		if stopped {
-			return
-		}
+		sessions = append(sessions, ssn)
 	}
+
+	return sessions
 }
 
-// GetRandomPeer selects a random peer from the peer set based on their weights.
-// The weight of each peer is determined by the number of failed and total bundles.
-// Peers with higher weights are more likely to be selected.
+// GetRandomPeer selects a random peer from the peer set based on their download score.
+// Peers with higher score are more likely to be selected.
 func (ps *PeerSet) GetRandomPeer() *Peer {
 	ps.lk.RLock()
 	defer ps.lk.RUnlock()
 
-	type weightedPeer struct {
-		peer   *Peer
-		weight int
+	type scoredPeer struct {
+		peer  *Peer
+		score int
 	}
 
 	//
-	totalWeight := 0
-	peers := make([]weightedPeer, 0, len(ps.peers))
+	totalScore := 0
+	peers := make([]scoredPeer, 0, len(ps.peers))
 	for _, p := range ps.peers {
-		if !p.IsKnownOrTrusty() {
+		if !p.IsConnected() {
 			continue
 		}
 
-		weight := (p.CompletedSessions + 1) * 100 / (p.TotalSessions + 1)
-		totalWeight += weight
-		peers = append(peers, weightedPeer{
-			peer:   p,
-			weight: weight,
+		score := p.DownloadScore()
+		totalScore += score
+		peers = append(peers, scoredPeer{
+			peer:  p,
+			score: score,
 		})
 	}
 
@@ -453,13 +455,13 @@ func (ps *PeerSet) GetRandomPeer() *Peer {
 		return nil
 	}
 
-	rnd := int(util.RandUint32(uint32(totalWeight)))
+	rnd := int(util.RandUint32(uint32(totalScore)))
 
 	// Find the index where the random number falls
 	for _, p := range peers {
-		totalWeight -= p.weight
+		totalScore -= p.score
 
-		if rnd >= totalWeight {
+		if rnd >= totalScore {
 			return p.peer
 		}
 	}

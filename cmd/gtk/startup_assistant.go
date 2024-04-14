@@ -173,9 +173,6 @@ func startupAssistant(workingDir string, chain genesis.ChainType) bool {
 			fatalErrorCheck(err)
 
 			numValidators := valueInterface.(int)
-
-			fmt.Println("number of validators:", numValidators)
-
 			walletPassword, err := entryPassword.GetText()
 			fatalErrorCheck(err)
 
@@ -350,7 +347,7 @@ func pageSeedConfirm(assistant *gtk.Assistant, assistFunc assistantFunc,
 	textViewConfirmSeed.SetMonospace(true)
 	textViewConfirmSeed.SetSizeRequest(0, 80)
 
-	textViewConfirmSeed.Connect("paste_clipboard", func(textView *gtk.TextView) {
+	textViewConfirmSeed.Connect("paste_clipboard", func(_ *gtk.TextView) {
 		showInfoDialog(assistant, "Opps, no copy paste!")
 		textViewConfirmSeed.StopEmission("paste_clipboard")
 	})
@@ -358,7 +355,7 @@ func pageSeedConfirm(assistant *gtk.Assistant, assistFunc assistantFunc,
 	seedConfirmTextBuffer, err := textViewConfirmSeed.GetBuffer()
 	fatalErrorCheck(err)
 
-	seedConfirmTextBuffer.Connect("changed", func(buf *gtk.TextBuffer) {
+	seedConfirmTextBuffer.Connect("changed", func(_ *gtk.TextBuffer) {
 		mnemonic1 := getTextViewContent(textViewSeed)
 		mnemonic2 := getTextViewContent(textViewConfirmSeed)
 		space := regexp.MustCompile(`\s+`)
@@ -433,11 +430,11 @@ func pagePassword(assistant *gtk.Assistant, assistFunc assistantFunc) (*gtk.Widg
 			assistantPageComplete(assistant, pageWidget, false)
 		}
 	}
-	entryPassword.Connect("changed", func(entry *gtk.Entry) {
+	entryPassword.Connect("changed", func(_ *gtk.Entry) {
 		validatePassword()
 	})
 
-	entryConfirmPassword.Connect("changed", func(entry *gtk.Entry) {
+	entryConfirmPassword.Connect("changed", func(_ *gtk.Entry) {
 		validatePassword()
 	})
 

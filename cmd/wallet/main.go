@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/pactus-project/pactus/cmd"
 	"github.com/pactus-project/pactus/wallet"
 	"github.com/spf13/cobra"
@@ -20,27 +18,16 @@ func addPasswordOption(c *cobra.Command) *string {
 }
 
 func openWallet() (*wallet.Wallet, error) {
-	if !*offlineOpt && *serverAddrOpt != "" {
-		wlt, err := wallet.Open(*pathOpt, true)
-		if err != nil {
-			return nil, err
-		}
-
-		err = wlt.Connect(*serverAddrOpt)
-		if err != nil {
-			fmt.Println(err.Error())
-
-			return nil, err
-		}
-
-		return wlt, err
-	}
 	wlt, err := wallet.Open(*pathOpt, *offlineOpt)
 	if err != nil {
 		return nil, err
 	}
 
-	return wlt, nil
+	if *serverAddrOpt != "" {
+		wlt.SetServerAddr(*serverAddrOpt)
+	}
+
+	return wlt, err
 }
 
 func main() {

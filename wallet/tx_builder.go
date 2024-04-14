@@ -1,8 +1,11 @@
 package wallet
 
 import (
+	"fmt"
+
 	"github.com/pactus-project/pactus/crypto"
 	"github.com/pactus-project/pactus/crypto/bls"
+	"github.com/pactus-project/pactus/types/amount"
 	"github.com/pactus-project/pactus/types/tx"
 	"github.com/pactus-project/pactus/types/tx/payload"
 )
@@ -17,7 +20,7 @@ func OptionLockTime(lockTime uint32) func(builder *txBuilder) error {
 	}
 }
 
-func OptionFee(fee int64) func(builder *txBuilder) error {
+func OptionFee(fee amount.Amount) func(builder *txBuilder) error {
 	return func(builder *txBuilder) error {
 		builder.fee = fee
 
@@ -40,8 +43,8 @@ type txBuilder struct {
 	pub      *bls.PublicKey
 	typ      payload.Type
 	lockTime uint32
-	amount   int64
-	fee      int64
+	amount   amount.Amount
+	fee      amount.Amount
 	memo     string
 }
 
@@ -96,16 +99,21 @@ func (m *txBuilder) build() (*tx.Tx, error) {
 		trx = tx.NewTransferTx(m.lockTime, *m.from, *m.to, m.amount, m.fee, m.memo)
 	case payload.TypeBond:
 		pub := m.pub
-		val, _ := m.client.getValidator(*m.to)
+		val, _ := m.client.getValidator(m.to.String())
 		if val != nil {
 			// validator exists
 			pub = nil
 		}
 		trx = tx.NewBondTx(m.lockTime, *m.from, *m.to, pub, m.amount, m.fee, m.memo)
+
 	case payload.TypeUnbond:
 		trx = tx.NewUnbondTx(m.lockTime, *m.from, m.memo)
+
 	case payload.TypeWithdraw:
 		trx = tx.NewWithdrawTx(m.lockTime, *m.from, *m.to, m.amount, m.fee, m.memo)
+
+	case payload.TypeSortition:
+		return nil, fmt.Errorf("unable to build sortition transactions")
 	}
 
 	return trx, nil

@@ -9,10 +9,12 @@ import (
 	"github.com/pactus-project/pactus/crypto"
 	"github.com/pactus-project/pactus/crypto/bls"
 	"github.com/pactus-project/pactus/crypto/hash"
+	"github.com/pactus-project/pactus/execution"
 	"github.com/pactus-project/pactus/genesis"
 	"github.com/pactus-project/pactus/store"
 	"github.com/pactus-project/pactus/txpool"
 	"github.com/pactus-project/pactus/types/account"
+	"github.com/pactus-project/pactus/types/amount"
 	"github.com/pactus-project/pactus/types/block"
 	"github.com/pactus-project/pactus/types/certificate"
 	"github.com/pactus-project/pactus/types/param"
@@ -253,22 +255,8 @@ func (m *MockState) Params() *param.Params {
 	return m.TestParams
 }
 
-func (m *MockState) CalculateFee(_ int64, payloadType payload.Type) (int64, error) {
-	switch payloadType {
-	case payload.TypeTransfer,
-		payload.TypeBond,
-		payload.TypeWithdraw:
-
-		return m.ts.RandInt64(1e9), nil
-
-	case payload.TypeUnbond,
-		payload.TypeSortition:
-
-		return 0, nil
-
-	default:
-		return 0, errors.Errorf(errors.ErrInvalidTx, "unexpected tx type: %v", payloadType)
-	}
+func (m *MockState) CalculateFee(amt amount.Amount, payloadType payload.Type) amount.Amount {
+	return execution.CalculateFee(amt, payloadType, m.TestParams)
 }
 
 func (m *MockState) PublicKey(addr crypto.Address) (crypto.PublicKey, error) {

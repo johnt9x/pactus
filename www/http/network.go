@@ -13,8 +13,21 @@ import (
 	pactus "github.com/pactus-project/pactus/www/grpc/gen/go"
 )
 
-func (s *Server) NetworkHandler(w http.ResponseWriter, _ *http.Request) {
-	res, err := s.network.GetNetworkInfo(s.ctx,
+func (s *Server) NetworkHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if s.enableAuth {
+		user, password, ok := r.BasicAuth()
+		if !ok {
+			w.Header().Set("WWW-Authenticate", `Basic realm="restricted", charset="UTF-8"`)
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+
+			return
+		}
+
+		ctx = s.basicAuth(ctx, user, password)
+	}
+
+	res, err := s.network.GetNetworkInfo(ctx,
 		&pactus.GetNetworkInfoRequest{})
 	if err != nil {
 		s.writeError(w, err)
@@ -65,8 +78,21 @@ func (s *Server) NetworkHandler(w http.ResponseWriter, _ *http.Request) {
 	s.writeHTML(w, tm.html())
 }
 
-func (s *Server) NodeHandler(w http.ResponseWriter, _ *http.Request) {
-	res, err := s.network.GetNodeInfo(s.ctx,
+func (s *Server) NodeHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if s.enableAuth {
+		user, password, ok := r.BasicAuth()
+		if !ok {
+			w.Header().Set("WWW-Authenticate", `Basic realm="restricted", charset="UTF-8"`)
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+
+			return
+		}
+
+		ctx = s.basicAuth(ctx, user, password)
+	}
+
+	res, err := s.network.GetNodeInfo(ctx,
 		&pactus.GetNodeInfoRequest{})
 	if err != nil {
 		s.writeError(w, err)

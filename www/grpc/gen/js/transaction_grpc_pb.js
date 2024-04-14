@@ -81,15 +81,15 @@ function deserialize_pactus_GetRawTransferTransactionRequest(buffer_arg) {
   return transaction_pb.GetRawTransferTransactionRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_pactus_GetRawUnBondTransactionRequest(arg) {
-  if (!(arg instanceof transaction_pb.GetRawUnBondTransactionRequest)) {
-    throw new Error('Expected argument of type pactus.GetRawUnBondTransactionRequest');
+function serialize_pactus_GetRawUnbondTransactionRequest(arg) {
+  if (!(arg instanceof transaction_pb.GetRawUnbondTransactionRequest)) {
+    throw new Error('Expected argument of type pactus.GetRawUnbondTransactionRequest');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
-function deserialize_pactus_GetRawUnBondTransactionRequest(buffer_arg) {
-  return transaction_pb.GetRawUnBondTransactionRequest.deserializeBinary(new Uint8Array(buffer_arg));
+function deserialize_pactus_GetRawUnbondTransactionRequest(buffer_arg) {
+  return transaction_pb.GetRawUnbondTransactionRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pactus_GetRawWithdrawTransactionRequest(arg) {
@@ -126,9 +126,11 @@ function deserialize_pactus_GetTransactionResponse(buffer_arg) {
 }
 
 
-// Transaction service defines various RPC methods for interacting with transactions.
+// Transaction service defines various RPC methods for interacting with
+// transactions.
 var TransactionService = exports.TransactionService = {
-  // GetTransaction retrieves transaction details based on the provided request parameters.
+  // GetTransaction retrieves transaction details based on the provided request
+// parameters.
 getTransaction: {
     path: '/pactus.Transaction/GetTransaction',
     requestStream: false,
@@ -140,7 +142,8 @@ getTransaction: {
     responseSerialize: serialize_pactus_GetTransactionResponse,
     responseDeserialize: deserialize_pactus_GetTransactionResponse,
   },
-  // CalculateFee calculates the transaction fee based on the specified amount and payload type.
+  // CalculateFee calculates the transaction fee based on the specified amount
+// and payload type.
 calculateFee: {
     path: '/pactus.Transaction/CalculateFee',
     requestStream: false,
@@ -188,15 +191,15 @@ getRawBondTransaction: {
     responseSerialize: serialize_pactus_GetRawTransactionResponse,
     responseDeserialize: deserialize_pactus_GetRawTransactionResponse,
   },
-  // GetRawUnBondTransaction retrieves raw details of an unbond transaction.
-getRawUnBondTransaction: {
-    path: '/pactus.Transaction/GetRawUnBondTransaction',
+  // GetRawUnbondTransaction retrieves raw details of an unbond transaction.
+getRawUnbondTransaction: {
+    path: '/pactus.Transaction/GetRawUnbondTransaction',
     requestStream: false,
     responseStream: false,
-    requestType: transaction_pb.GetRawUnBondTransactionRequest,
+    requestType: transaction_pb.GetRawUnbondTransactionRequest,
     responseType: transaction_pb.GetRawTransactionResponse,
-    requestSerialize: serialize_pactus_GetRawUnBondTransactionRequest,
-    requestDeserialize: deserialize_pactus_GetRawUnBondTransactionRequest,
+    requestSerialize: serialize_pactus_GetRawUnbondTransactionRequest,
+    requestDeserialize: deserialize_pactus_GetRawUnbondTransactionRequest,
     responseSerialize: serialize_pactus_GetRawTransactionResponse,
     responseDeserialize: deserialize_pactus_GetRawTransactionResponse,
   },

@@ -7,8 +7,8 @@ import (
 	"fmt"
 
 	"github.com/gotk3/gotk3/gtk"
+	"github.com/pactus-project/pactus/types/amount"
 	"github.com/pactus-project/pactus/types/tx/payload"
-	"github.com/pactus-project/pactus/util"
 	"github.com/pactus-project/pactus/wallet"
 )
 
@@ -28,11 +28,11 @@ func broadcastTransactionBond(wlt *wallet.Wallet) {
 	publicKeyEntry := getEntryObj(builder, "id_entry_public_key")
 	amountEntry := getEntryObj(builder, "id_entry_amount")
 	amountHint := getLabelObj(builder, "id_hint_amount")
+	memoEntry := getEntryObj(builder, "id_entry_memo")
 	getButtonObj(builder, "id_button_cancel").SetImage(CancelIcon())
 	getButtonObj(builder, "id_button_send").SetImage(SendIcon())
 
-	// TODO: we need something like: wlt.AllAccountAddresses()
-	for _, ai := range wlt.AddressInfos() {
+	for _, ai := range wlt.AllAccountAddresses() {
 		senderEntry.Append(ai.Address, ai.Address)
 	}
 
@@ -64,15 +64,20 @@ func broadcastTransactionBond(wlt *wallet.Wallet) {
 		receiver, _ := receiverEntry.GetText()
 		publicKey, _ := publicKeyEntry.GetText()
 		amountStr, _ := amountEntry.GetText()
+		memo, _ := memoEntry.GetText()
 
-		amount, err := util.StringToChange(amountStr)
+		amt, err := amount.FromString(amountStr)
 		if err != nil {
 			errorCheck(err)
 
 			return
 		}
 
-		trx, err := wlt.MakeBondTx(sender, receiver, publicKey, amount)
+		opts := []wallet.TxOption{
+			wallet.OptionMemo(memo),
+		}
+
+		trx, err := wlt.MakeBondTx(sender, receiver, publicKey, amt, opts...)
 		if err != nil {
 			errorCheck(err)
 
@@ -80,14 +85,15 @@ func broadcastTransactionBond(wlt *wallet.Wallet) {
 		}
 		msg := fmt.Sprintf(`
 You are going to sign and broadcast this transaction:
-
-From:   %v
-To:     %v
-Amount: %v
-Fee:    %v
-
-THIS ACTION IS NOT REVERSIBLE. Do you want to continue?`, sender, receiver,
-			util.ChangeToString(amount), util.ChangeToString(trx.Fee()))
+<tt>
+From:   %s
+To:     %s
+Amount: %s
+Fee:    %s
+Memo:   %s
+</tt>
+<b>THIS ACTION IS NOT REVERSIBLE. Do you want to continue?</b>`,
+			sender, receiver, amt, trx.Fee(), trx.Memo())
 
 		signAndBroadcastTransaction(dlg, msg, wlt, trx)
 

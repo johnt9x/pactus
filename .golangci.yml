@@ -10,34 +10,25 @@ linters:
     - asciicheck
     - bidichk
     - bodyclose
-    # - containedctx
-    # - contextcheck
+    - contextcheck
     - decorder
     - dogsled
-    # - dupl
     - dupword
     - durationcheck
     - errchkjson
     - errname
     - errorlint
     - execinquery
-    # - exhaustive
-    # - exhaustruct
+    - exhaustive
     - exportloopref
-    # - forbidigo
-    # - forcetypeassert
-    # - funlen
+    - forbidigo
     - gci
     - ginkgolinter
     - gocheckcompilerdirectives
-    # - gochecknoinits
     - gocognit
-    # - goconst
     - gocritic
     - gocyclo
     - godot
-    # - godox
-    # - goerr113
     - gofmt
     - gofumpt
     - goheader
@@ -49,7 +40,6 @@ linters:
     - gosmopolitan
     - grouper
     - importas
-    # - ireturn
     - lll
     - loggercheck
     - maintidx
@@ -85,8 +75,8 @@ linters:
     - wastedassign
     - whitespace
     # - wrapcheck
-    # - wsl
     - zerologlint
+    - nonamedreturns
 
 linters-settings:
   gosimple:
@@ -97,9 +87,6 @@ linters-settings:
     disable: fieldalignment
     shadow:
         strict: true
-
-  godox:
-    severity: warning
 
   predeclared:
     # Comma-separated list of predeclared identifiers to not report on.
@@ -138,13 +125,12 @@ linters-settings:
 
 issues:
   exclude-rules:
-    # disable funlen for all _test.go files
     - path: _test.go
       linters:
-        - funlen
         - maintidx
         - nestif
         - gocognit
+        - forbidigo
 
     - linters:
         - govet

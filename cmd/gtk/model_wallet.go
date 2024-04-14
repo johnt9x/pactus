@@ -4,28 +4,33 @@ package main
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
-	"github.com/pactus-project/pactus/util"
+	"github.com/pactus-project/pactus/crypto"
+	"github.com/pactus-project/pactus/node"
 	"github.com/pactus-project/pactus/wallet"
 )
 
 type walletModel struct {
 	wallet    *wallet.Wallet
 	listStore *gtk.ListStore
+	node      *node.Node
 }
 
-func newWalletModel(wlt *wallet.Wallet) *walletModel {
+func newWalletModel(wlt *wallet.Wallet, nde *node.Node) *walletModel {
 	listStore, _ := gtk.ListStoreNew(
 		glib.TYPE_STRING, // Column no
 		glib.TYPE_STRING, // Address
 		glib.TYPE_STRING, // Label
-		glib.TYPE_STRING, // balance
-		glib.TYPE_STRING) // Stake
+		glib.TYPE_STRING, // Balance
+		glib.TYPE_STRING, // Stake
+		glib.TYPE_STRING) // Availability Score
 
 	return &walletModel{
 		wallet:    wlt,
+		node:      nde,
 		listStore: listStore,
 	}
 }
@@ -45,8 +50,18 @@ func (model *walletModel) rebuildModel() {
 
 			balance, _ := model.wallet.Balance(info.Address)
 			stake, _ := model.wallet.Stake(info.Address)
-			balanceStr := util.ChangeToString(balance)
-			stakeStr := util.ChangeToString(stake)
+			balanceStr := balance.String()
+			stakeStr := stake.String()
+
+			var score string
+
+			valAddr, err := crypto.AddressFromString(info.Address)
+			if err == nil {
+				val := model.node.State().ValidatorByAddress(valAddr)
+				if val != nil {
+					score = strconv.FormatFloat(model.node.State().AvailabilityScore(val.Number()), 'f', -1, 64)
+				}
+			}
 
 			data = append(data, []string{
 				fmt.Sprintf("%v", no+1),
@@ -54,6 +69,7 @@ func (model *walletModel) rebuildModel() {
 				label,
 				balanceStr,
 				stakeStr,
+				score,
 			})
 		}
 
@@ -68,6 +84,7 @@ func (model *walletModel) rebuildModel() {
 						IDAddressesColumnLabel,
 						IDAddressesColumnBalance,
 						IDAddressesColumnStake,
+						IDAddressesColumnAvailabilityScore,
 					},
 					[]interface{}{
 						d[0],
@@ -75,6 +92,7 @@ func (model *walletModel) rebuildModel() {
 						d[2],
 						d[3],
 						d[4],
+						d[5],
 					})
 
 				errorCheck(err)

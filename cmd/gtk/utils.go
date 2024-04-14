@@ -13,15 +13,31 @@ import (
 	"github.com/gotk3/gotk3/gdk"
 	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
+	"github.com/pactus-project/pactus/types/amount"
 	"github.com/pactus-project/pactus/types/tx"
 	"github.com/pactus-project/pactus/types/tx/payload"
-	"github.com/pactus-project/pactus/util"
 	"github.com/pactus-project/pactus/wallet"
 )
+
+// https://stackoverflow.com/questions/3249053/copying-the-text-from-a-gtk-messagedialog
+func updateMessageDialog(dlg *gtk.MessageDialog) {
+	area, err := dlg.GetMessageArea()
+	if err == nil {
+		children := area.GetChildren()
+		children.Foreach(func(item interface{}) {
+			label, err := gtk.WidgetToLabel(item.(*gtk.Widget))
+			if err == nil {
+				label.SetSelectable(true)
+				label.SetUseMarkup(true)
+			}
+		})
+	}
+}
 
 func showQuestionDialog(parent gtk.IWindow, msg string) bool {
 	dlg := gtk.MessageDialogNew(parent,
 		gtk.DIALOG_MODAL, gtk.MESSAGE_QUESTION, gtk.BUTTONS_YES_NO, msg)
+	updateMessageDialog(dlg)
 	res := dlg.Run()
 	dlg.Destroy()
 
@@ -31,6 +47,7 @@ func showQuestionDialog(parent gtk.IWindow, msg string) bool {
 func showInfoDialog(parent gtk.IWindow, msg string) {
 	dlg := gtk.MessageDialogNew(parent,
 		gtk.DIALOG_MODAL, gtk.MESSAGE_INFO, gtk.BUTTONS_OK, msg)
+	updateMessageDialog(dlg)
 	dlg.Run()
 	dlg.Destroy()
 }
@@ -38,6 +55,7 @@ func showInfoDialog(parent gtk.IWindow, msg string) {
 func showWarningDialog(parent gtk.IWindow, msg string) {
 	dlg := gtk.MessageDialogNew(parent,
 		gtk.DIALOG_MODAL, gtk.MESSAGE_WARNING, gtk.BUTTONS_OK, msg)
+	updateMessageDialog(dlg)
 	dlg.Run()
 	dlg.Destroy()
 }
@@ -45,6 +63,7 @@ func showWarningDialog(parent gtk.IWindow, msg string) {
 func showErrorDialog(parent gtk.IWindow, msg string) {
 	dlg := gtk.MessageDialogNew(parent,
 		gtk.DIALOG_MODAL, gtk.MESSAGE_ERROR, gtk.BUTTONS_OK, msg)
+	updateMessageDialog(dlg)
 	dlg.Run()
 	dlg.Destroy()
 }
@@ -152,48 +171,35 @@ func setTextViewContent(tv *gtk.TextView, content string) {
 }
 
 func updateValidatorHint(lbl *gtk.Label, addr string, w *wallet.Wallet) {
-	stake, err := w.Stake(addr)
-	if err != nil {
-		updateHintLabel(lbl, "")
-	} else {
-		hint := fmt.Sprintf("stake: %v", util.ChangeToString(stake))
+	stake, _ := w.Stake(addr)
+	hint := fmt.Sprintf("stake: %s", stake)
 
-		info := w.AddressInfo(addr)
-		if info != nil && info.Label != "" {
-			hint += ", label: " + info.Label
-		}
-		updateHintLabel(lbl, hint)
+	info := w.AddressInfo(addr)
+	if info != nil && info.Label != "" {
+		hint += ", label: " + info.Label
 	}
+	updateHintLabel(lbl, hint)
 }
 
 func updateAccountHint(lbl *gtk.Label, addr string, w *wallet.Wallet) {
-	balance, err := w.Balance(addr)
-	if err != nil {
-		updateHintLabel(lbl, "")
-	} else {
-		hint := fmt.Sprintf("balance: %v", util.ChangeToString(balance))
+	balance, _ := w.Balance(addr)
+	hint := fmt.Sprintf("balance: %s", balance)
 
-		info := w.AddressInfo(addr)
-		if info != nil && info.Label != "" {
-			hint += ", label: " + info.Label
-		}
-		updateHintLabel(lbl, hint)
+	info := w.AddressInfo(addr)
+	if info != nil && info.Label != "" {
+		hint += ", label: " + info.Label
 	}
+	updateHintLabel(lbl, hint)
 }
 
 func updateFeeHint(lbl *gtk.Label, amtStr string, w *wallet.Wallet, payloadType payload.Type) {
-	amount, err := util.StringToChange(amtStr)
+	amt, err := amount.FromString(amtStr)
 	if err != nil {
 		updateHintLabel(lbl, "")
 	} else {
-		fee, err := w.CalculateFee(amount, payloadType)
-		if err != nil {
-			errorCheck(err)
-
-			return
-		}
-		hint := fmt.Sprintf("payable: %v, fee: %v",
-			util.ChangeToString(fee+amount), util.ChangeToString(fee))
+		fee, _ := w.CalculateFee(amt, payloadType)
+		hint := fmt.Sprintf("payable: %s, fee: %s",
+			fee+amt, fee)
 		updateHintLabel(lbl, hint)
 	}
 }
@@ -215,7 +221,7 @@ func signAndBroadcastTransaction(parent *gtk.Dialog, msg string, w *wallet.Walle
 
 			return
 		}
-		_, err = w.BroadcastTransaction(trx)
+		txID, err := w.BroadcastTransaction(trx)
 		if err != nil {
 			errorCheck(err)
 
@@ -228,6 +234,9 @@ func signAndBroadcastTransaction(parent *gtk.Dialog, msg string, w *wallet.Walle
 
 			return
 		}
+
+		showInfoDialog(parent,
+			fmt.Sprintf("Transaction Hash: <a href=\"https://pacviewer.com/transactions/%s\">%s</a>", txID, txID))
 	}
 }
 

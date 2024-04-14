@@ -11,16 +11,17 @@ import (
 )
 
 //go:embed assets/ui/dialog_transaction_unbond.ui
-var uiTransactionUnBondDialog []byte
+var uiTransactionUnbondDialog []byte
 
 func broadcastTransactionUnbond(wlt *wallet.Wallet) {
-	builder, err := gtk.BuilderNewFromString(string(uiTransactionUnBondDialog))
+	builder, err := gtk.BuilderNewFromString(string(uiTransactionUnbondDialog))
 	fatalErrorCheck(err)
 
 	dlg := getDialogObj(builder, "id_dialog_transaction_unbond")
 
 	validatorCombo := getComboBoxTextObj(builder, "id_combo_validator")
 	validatorHint := getLabelObj(builder, "id_hint_validator")
+	memoEntry := getEntryObj(builder, "id_entry_memo")
 	getButtonObj(builder, "id_button_cancel").SetImage(CancelIcon())
 	getButtonObj(builder, "id_button_send").SetImage(SendIcon())
 
@@ -37,8 +38,13 @@ func broadcastTransactionUnbond(wlt *wallet.Wallet) {
 	onSend := func() {
 		validatorEntry, _ := validatorCombo.GetEntry()
 		validator, _ := validatorEntry.GetText()
+		memo, _ := memoEntry.GetText()
 
-		trx, err := wlt.MakeUnbondTx(validator)
+		opts := []wallet.TxOption{
+			wallet.OptionMemo(memo),
+		}
+
+		trx, err := wlt.MakeUnbondTx(validator, opts...)
 		if err != nil {
 			errorCheck(err)
 
@@ -46,10 +52,11 @@ func broadcastTransactionUnbond(wlt *wallet.Wallet) {
 		}
 		msg := fmt.Sprintf(`
 You are going to sign and broadcast this transaction:
-
-Validator: %v
-
-THIS ACTION IS NOT REVERSIBLE. Do you want to continue?`, validator)
+<tt>
+Validator: %s
+Memo:      %s
+</tt>
+<b>THIS ACTION IS NOT REVERSIBLE. Do you want to continue?</b>`, validator, trx.Memo())
 
 		signAndBroadcastTransaction(dlg, msg, wlt, trx)
 

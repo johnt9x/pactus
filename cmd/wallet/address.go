@@ -5,8 +5,8 @@ import (
 
 	"github.com/pactus-project/pactus/cmd"
 	"github.com/pactus-project/pactus/crypto/bls"
-	"github.com/pactus-project/pactus/util"
 	"github.com/pactus-project/pactus/wallet"
+	"github.com/pactus-project/pactus/wallet/vault"
 	"github.com/spf13/cobra"
 )
 
@@ -51,12 +51,12 @@ func buildAllAddressesCmd(parentCmd *cobra.Command) {
 
 			if *balanceOpt {
 				balance, _ := wlt.Balance(info.Address)
-				line += fmt.Sprintf("%v\t", util.ChangeToCoin(balance))
+				line += fmt.Sprintf("%s\t", balance.String())
 			}
 
 			if *stakeOpt {
 				stake, _ := wlt.Stake(info.Address)
-				line += fmt.Sprintf("%v\t", util.ChangeToCoin(stake))
+				line += fmt.Sprintf("%s\t", stake.String())
 			}
 
 			line += info.Label
@@ -77,7 +77,7 @@ func buildNewAddressCmd(parentCmd *cobra.Command) {
 		wallet.AddressTypeBLSAccount, "the type of address: bls_account or validator")
 
 	newAddressCmd.Run = func(_ *cobra.Command, _ []string) {
-		var addr string
+		var addressInfo *vault.AddressInfo
 		var err error
 
 		label := cmd.PromptInput("Label")
@@ -85,9 +85,9 @@ func buildNewAddressCmd(parentCmd *cobra.Command) {
 		cmd.FatalErrorCheck(err)
 
 		if *addressType == wallet.AddressTypeBLSAccount {
-			addr, err = wlt.NewBLSAccountAddress(label)
+			addressInfo, err = wlt.NewBLSAccountAddress(label)
 		} else if *addressType == wallet.AddressTypeValidator {
-			addr, err = wlt.NewValidatorAddress(label)
+			addressInfo, err = wlt.NewValidatorAddress(label)
 		} else {
 			err = fmt.Errorf("invalid address type '%s'", *addressType)
 		}
@@ -97,7 +97,7 @@ func buildNewAddressCmd(parentCmd *cobra.Command) {
 		cmd.FatalErrorCheck(err)
 
 		cmd.PrintLine()
-		cmd.PrintInfoMsgf("%s", addr)
+		cmd.PrintInfoMsgf("%s", addressInfo.Address)
 	}
 }
 
@@ -123,8 +123,8 @@ func buildBalanceCmd(parentCmd *cobra.Command) {
 		stake, err := wlt.Stake(addr)
 		cmd.FatalErrorCheck(err)
 
-		cmd.PrintInfoMsgf("balance: %v\tstake: %v",
-			util.ChangeToCoin(balance), util.ChangeToCoin(stake))
+		cmd.PrintInfoMsgf("balance: %s\tstake: %s",
+			balance.String(), stake.String())
 	}
 }
 
@@ -225,7 +225,7 @@ func buildSetLabelCmd(parentCmd *cobra.Command) {
 	}
 	parentCmd.AddCommand(setLabelCmd)
 
-	setLabelCmd.Run = func(c *cobra.Command, args []string) {
+	setLabelCmd.Run = func(_ *cobra.Command, args []string) {
 		addr := args[0]
 
 		wlt, err := openWallet()

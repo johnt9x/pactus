@@ -14,23 +14,25 @@ all: build test
 ### Tools needed for development
 devtools:
 	@echo "Installing devtools"
-	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.54.1
-	go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway@v2.12
-	go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@v2.12
-	go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.28
-	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.2
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.57.2
+	go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway@v2.19.1
+	go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@v2.19.1
+	go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.33
+	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.3
 	go install github.com/NathanBaulch/protoc-gen-cobra@v1.2.1
 	go install github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc@v1.5.1
-	go install github.com/bufbuild/buf/cmd/buf@v1.25.0
+	go install github.com/bufbuild/buf/cmd/buf@v1.30.1
 	go install mvdan.cc/gofumpt@latest
-	go install github.com/rakyll/statik@v0.1
+	go install github.com/rakyll/statik@v0.1.7
+	go install github.com/pacviewer/jrpc-gateway/protoc-gen-jrpc-gateway@v0.1.3
 
 ########################################
 ### Building
-build:
+build: 
 	go build -o ./build/pactus-daemon$(EXE) ./cmd/daemon
 	go build -o ./build/pactus-wallet$(EXE) ./cmd/wallet
-	go build -o ./build/pactus-ctl$(EXE) 	./cmd/ctl
+	go build -o ./build/pactus-shell$(EXE)  ./cmd/shell
+
 
 build_race:
 	go build -race -o ./build/pactus-daemon$(EXE) ./cmd/daemon
@@ -60,8 +62,6 @@ docker:
 proto:
 	$(RM) www/grpc/gen
 	cd www/grpc/buf && buf generate --template buf.gen.yaml ../proto
-	cd www/grpc/ && statik -m -f -src swagger-ui/
-
 # Generate static assets for Swagger-UI
 	cd www/grpc/ && statik -m -f -src swagger-ui/
 

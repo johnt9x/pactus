@@ -207,7 +207,7 @@
                 </li>
               
                 <li>
-                  <a href="#pactus.GetRawUnBondTransactionRequest"><span class="badge">M</span>GetRawUnBondTransactionRequest</a>
+                  <a href="#pactus.GetRawUnbondTransactionRequest"><span class="badge">M</span>GetRawUnbondTransactionRequest</a>
                 </li>
               
                 <li>
@@ -444,6 +444,10 @@
             <ul>
               
                 <li>
+                  <a href="#pactus.AddressInfo"><span class="badge">M</span>AddressInfo</a>
+                </li>
+              
+                <li>
                   <a href="#pactus.CreateWalletRequest"><span class="badge">M</span>CreateWalletRequest</a>
                 </li>
               
@@ -452,11 +456,39 @@
                 </li>
               
                 <li>
+                  <a href="#pactus.GetAddressHistoryRequest"><span class="badge">M</span>GetAddressHistoryRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#pactus.GetAddressHistoryResponse"><span class="badge">M</span>GetAddressHistoryResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#pactus.GetNewAddressRequest"><span class="badge">M</span>GetNewAddressRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#pactus.GetNewAddressResponse"><span class="badge">M</span>GetNewAddressResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#pactus.GetTotalBalanceRequest"><span class="badge">M</span>GetTotalBalanceRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#pactus.GetTotalBalanceResponse"><span class="badge">M</span>GetTotalBalanceResponse</a>
+                </li>
+              
+                <li>
                   <a href="#pactus.GetValidatorAddressRequest"><span class="badge">M</span>GetValidatorAddressRequest</a>
                 </li>
               
                 <li>
                   <a href="#pactus.GetValidatorAddressResponse"><span class="badge">M</span>GetValidatorAddressResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#pactus.HistoryInfo"><span class="badge">M</span>HistoryInfo</a>
                 </li>
               
                 <li>
@@ -499,6 +531,10 @@
                   <a href="#pactus.UnlockWalletResponse"><span class="badge">M</span>UnlockWalletResponse</a>
                 </li>
               
+              
+                <li>
+                  <a href="#pactus.AddressType"><span class="badge">E</span>AddressType</a>
+                </li>
               
               
               
@@ -583,14 +619,21 @@
                   <td>amount</td>
                   <td><a href="#int64">int64</a></td>
                   <td></td>
-                  <td><p>Transaction amount. </p></td>
+                  <td><p>Transaction amount in NanoPAC. </p></td>
                 </tr>
               
                 <tr>
-                  <td>payloadType</td>
+                  <td>payload_type</td>
                   <td><a href="#pactus.PayloadType">PayloadType</a></td>
                   <td></td>
                   <td><p>Type of transaction payload. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>fixed_amount</td>
+                  <td><a href="#bool">bool</a></td>
+                  <td></td>
+                  <td><p>Indicates that amount should be fixed and includes the fee. </p></td>
                 </tr>
               
             </tbody>
@@ -611,10 +654,17 @@
             <tbody>
               
                 <tr>
+                  <td>amount</td>
+                  <td><a href="#int64">int64</a></td>
+                  <td></td>
+                  <td><p>Calculated amount in NanoPAC. </p></td>
+                </tr>
+              
+                <tr>
                   <td>fee</td>
                   <td><a href="#int64">int64</a></td>
                   <td></td>
-                  <td><p>Calculated transaction fee. </p></td>
+                  <td><p>Calculated transaction fee in NanoPAC. </p></td>
                 </tr>
               
             </tbody>
@@ -638,28 +688,30 @@
                   <td>lock_time</td>
                   <td><a href="#uint32">uint32</a></td>
                   <td></td>
-                  <td><p>Lock time for the transaction. </p></td>
+                  <td><p>Lock time for the transaction.
+If not explicitly set, it sets to the last block height. </p></td>
                 </tr>
               
                 <tr>
                   <td>sender</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>Sender&#39;s address. </p></td>
+                  <td><p>Sender&#39;s account address. </p></td>
                 </tr>
               
                 <tr>
                   <td>receiver</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>Receiver&#39;s address. </p></td>
+                  <td><p>Receiver&#39;s validator address. </p></td>
                 </tr>
               
                 <tr>
                   <td>stake</td>
                   <td><a href="#int64">int64</a></td>
                   <td></td>
-                  <td><p>Stake amount. </p></td>
+                  <td><p>Stake amount in NanoPAC.
+It should be greater than 0. </p></td>
                 </tr>
               
                 <tr>
@@ -673,7 +725,8 @@
                   <td>fee</td>
                   <td><a href="#int64">int64</a></td>
                   <td></td>
-                  <td><p>Transaction fee. </p></td>
+                  <td><p>Transaction fee in NanoPAC.
+If not explicitly set, it is calculated based on the stake. </p></td>
                 </tr>
               
                 <tr>
@@ -728,35 +781,38 @@
                   <td>lock_time</td>
                   <td><a href="#uint32">uint32</a></td>
                   <td></td>
-                  <td><p>Lock time for the transaction. </p></td>
+                  <td><p>Lock time for the transaction.
+If not explicitly set, it sets to the last block height. </p></td>
                 </tr>
               
                 <tr>
                   <td>sender</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>Sender&#39;s address. </p></td>
+                  <td><p>Sender&#39;s account address. </p></td>
                 </tr>
               
                 <tr>
                   <td>receiver</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>Receiver&#39;s address. </p></td>
+                  <td><p>Receiver&#39;s account address. </p></td>
                 </tr>
               
                 <tr>
                   <td>amount</td>
                   <td><a href="#int64">int64</a></td>
                   <td></td>
-                  <td><p>Transaction amount. </p></td>
+                  <td><p>Transfer amount in NanoPAC.
+It should be greater than 0. </p></td>
                 </tr>
               
                 <tr>
                   <td>fee</td>
                   <td><a href="#int64">int64</a></td>
                   <td></td>
-                  <td><p>Transaction fee. </p></td>
+                  <td><p>Transaction fee in NanoPAC.
+If not explicitly set, it is calculated based on the amount. </p></td>
                 </tr>
               
                 <tr>
@@ -773,7 +829,7 @@
 
         
       
-        <h3 id="pactus.GetRawUnBondTransactionRequest">GetRawUnBondTransactionRequest</h3>
+        <h3 id="pactus.GetRawUnbondTransactionRequest">GetRawUnbondTransactionRequest</h3>
         <p>Request message for retrieving raw details of an unbond transaction.</p>
 
         
@@ -787,7 +843,8 @@
                   <td>lock_time</td>
                   <td><a href="#uint32">uint32</a></td>
                   <td></td>
-                  <td><p>Lock time for the transaction. </p></td>
+                  <td><p>Lock time for the transaction.
+If not explicitly set, it sets to the last block height. </p></td>
                 </tr>
               
                 <tr>
@@ -825,7 +882,8 @@
                   <td>lock_time</td>
                   <td><a href="#uint32">uint32</a></td>
                   <td></td>
-                  <td><p>Lock time for the transaction. </p></td>
+                  <td><p>Lock time for the transaction.
+If not explicitly set, it sets to the last block height. </p></td>
                 </tr>
               
                 <tr>
@@ -843,17 +901,19 @@
                 </tr>
               
                 <tr>
-                  <td>fee</td>
-                  <td><a href="#int64">int64</a></td>
-                  <td></td>
-                  <td><p>Transaction fee. </p></td>
-                </tr>
-              
-                <tr>
                   <td>amount</td>
                   <td><a href="#int64">int64</a></td>
                   <td></td>
-                  <td><p>Withdrawal amount. </p></td>
+                  <td><p>Withdrawal amount in NanoPAC.
+It should be greater than 0. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>fee</td>
+                  <td><a href="#int64">int64</a></td>
+                  <td></td>
+                  <td><p>Transaction fee in NanoPAC.
+If not explicitly set, it is calculated based on the amount. </p></td>
                 </tr>
               
                 <tr>
@@ -967,7 +1027,7 @@
                   <td>stake</td>
                   <td><a href="#int64">int64</a></td>
                   <td></td>
-                  <td><p>Stake amount. </p></td>
+                  <td><p>Stake amount in NanoPAC. </p></td>
                 </tr>
               
             </tbody>
@@ -1036,7 +1096,7 @@
                   <td>amount</td>
                   <td><a href="#int64">int64</a></td>
                   <td></td>
-                  <td><p>Transaction amount. </p></td>
+                  <td><p>Transaction amount in NanoPAC. </p></td>
                 </tr>
               
             </tbody>
@@ -1098,7 +1158,7 @@
                   <td>amount</td>
                   <td><a href="#int64">int64</a></td>
                   <td></td>
-                  <td><p>Withdrawal amount. </p></td>
+                  <td><p>Withdrawal amount in NanoPAC. </p></td>
                 </tr>
               
             </tbody>
@@ -1150,18 +1210,18 @@
                   <td>value</td>
                   <td><a href="#int64">int64</a></td>
                   <td></td>
-                  <td><p>Transaction value. </p></td>
+                  <td><p>Transaction value in NanoPAC. </p></td>
                 </tr>
               
                 <tr>
                   <td>fee</td>
                   <td><a href="#int64">int64</a></td>
                   <td></td>
-                  <td><p>Transaction fee. </p></td>
+                  <td><p>Transaction fee in NanoPAC. </p></td>
                 </tr>
               
                 <tr>
-                  <td>payloadType</td>
+                  <td>payload_type</td>
                   <td><a href="#pactus.PayloadType">PayloadType</a></td>
                   <td></td>
                   <td><p>Type of transaction payload. </p></td>
@@ -1290,13 +1350,13 @@
               <tr>
                 <td>TRANSACTION_DATA</td>
                 <td>0</td>
-                <td><p>Request only transaction data.</p></td>
+                <td><p>Request transaction data only.</p></td>
               </tr>
             
               <tr>
                 <td>TRANSACTION_INFO</td>
                 <td>1</td>
-                <td><p>Request detailed transaction information.</p></td>
+                <td><p>Request transaction details.</p></td>
               </tr>
             
           </tbody>
@@ -1307,7 +1367,7 @@
 
       
         <h3 id="pactus.Transaction">Transaction</h3>
-        <p>Transaction service defines various RPC methods for interacting with transactions.</p>
+        <p>Transaction service defines various RPC methods for interacting with</p><p>transactions.</p>
         <table class="enum-table">
           <thead>
             <tr><td>Method Name</td><td>Request Type</td><td>Response Type</td><td>Description</td></tr>
@@ -1318,14 +1378,16 @@
                 <td>GetTransaction</td>
                 <td><a href="#pactus.GetTransactionRequest">GetTransactionRequest</a></td>
                 <td><a href="#pactus.GetTransactionResponse">GetTransactionResponse</a></td>
-                <td><p>GetTransaction retrieves transaction details based on the provided request parameters.</p></td>
+                <td><p>GetTransaction retrieves transaction details based on the provided request
+parameters.</p></td>
               </tr>
             
               <tr>
                 <td>CalculateFee</td>
                 <td><a href="#pactus.CalculateFeeRequest">CalculateFeeRequest</a></td>
                 <td><a href="#pactus.CalculateFeeResponse">CalculateFeeResponse</a></td>
-                <td><p>CalculateFee calculates the transaction fee based on the specified amount and payload type.</p></td>
+                <td><p>CalculateFee calculates the transaction fee based on the specified amount
+and payload type.</p></td>
               </tr>
             
               <tr>
@@ -1350,10 +1412,10 @@
               </tr>
             
               <tr>
-                <td>GetRawUnBondTransaction</td>
-                <td><a href="#pactus.GetRawUnBondTransactionRequest">GetRawUnBondTransactionRequest</a></td>
+                <td>GetRawUnbondTransaction</td>
+                <td><a href="#pactus.GetRawUnbondTransactionRequest">GetRawUnbondTransactionRequest</a></td>
                 <td><a href="#pactus.GetRawTransactionResponse">GetRawTransactionResponse</a></td>
-                <td><p>GetRawUnBondTransaction retrieves raw details of an unbond transaction.</p></td>
+                <td><p>GetRawUnbondTransaction retrieves raw details of an unbond transaction.</p></td>
               </tr>
             
               <tr>
@@ -1410,7 +1472,7 @@
                   <td>balance</td>
                   <td><a href="#int64">int64</a></td>
                   <td></td>
-                  <td><p>Account balance. </p></td>
+                  <td><p>Account balance in NanoPAC. </p></td>
                 </tr>
               
                 <tr>
@@ -1786,7 +1848,7 @@
                   <td>data</td>
                   <td><a href="#bytes">bytes</a></td>
                   <td></td>
-                  <td><p>Block data. </p></td>
+                  <td><p>Block data, only available if the verbosity level is set to BLOCK_DATA. </p></td>
                 </tr>
               
                 <tr>
@@ -1814,7 +1876,8 @@
                   <td>txs</td>
                   <td><a href="#pactus.TransactionInfo">TransactionInfo</a></td>
                   <td>repeated</td>
-                  <td><p>List of transactions in the block. </p></td>
+                  <td><p>List of transactions in the block.
+Transaction information is available when the verbosity level is set to BLOCK_TRANSACTIONS. </p></td>
                 </tr>
               
             </tbody>
@@ -2121,7 +2184,7 @@
                   <td>stake</td>
                   <td><a href="#int64">int64</a></td>
                   <td></td>
-                  <td><p>Validator stake. </p></td>
+                  <td><p>Validator stake in NanoPAC. </p></td>
                 </tr>
               
                 <tr>
@@ -2244,13 +2307,13 @@
               <tr>
                 <td>BLOCK_INFO</td>
                 <td>1</td>
-                <td><p>Request block information only.</p></td>
+                <td><p>Request block information and transaction IDs.</p></td>
               </tr>
             
               <tr>
                 <td>BLOCK_TRANSACTIONS</td>
                 <td>2</td>
-                <td><p>Request block transactions only.</p></td>
+                <td><p>Request block information and transaction details.</p></td>
               </tr>
             
           </tbody>
@@ -2307,7 +2370,8 @@
                 <td>GetBlock</td>
                 <td><a href="#pactus.GetBlockRequest">GetBlockRequest</a></td>
                 <td><a href="#pactus.GetBlockResponse">GetBlockResponse</a></td>
-                <td><p>GetBlock retrieves information about a block based on the provided request parameters.</p></td>
+                <td><p>GetBlock retrieves information about a block based on the provided request
+parameters.</p></td>
               </tr>
             
               <tr>
@@ -2342,21 +2406,24 @@
                 <td>GetAccount</td>
                 <td><a href="#pactus.GetAccountRequest">GetAccountRequest</a></td>
                 <td><a href="#pactus.GetAccountResponse">GetAccountResponse</a></td>
-                <td><p>GetAccount retrieves information about an account based on the provided address.</p></td>
+                <td><p>GetAccount retrieves information about an account based on the provided
+address.</p></td>
               </tr>
             
               <tr>
                 <td>GetValidator</td>
                 <td><a href="#pactus.GetValidatorRequest">GetValidatorRequest</a></td>
                 <td><a href="#pactus.GetValidatorResponse">GetValidatorResponse</a></td>
-                <td><p>GetValidator retrieves information about a validator based on the provided address.</p></td>
+                <td><p>GetValidator retrieves information about a validator based on the provided
+address.</p></td>
               </tr>
             
               <tr>
                 <td>GetValidatorByNumber</td>
                 <td><a href="#pactus.GetValidatorByNumberRequest">GetValidatorByNumberRequest</a></td>
                 <td><a href="#pactus.GetValidatorResponse">GetValidatorResponse</a></td>
-                <td><p>GetValidatorByNumber retrieves information about a validator based on the provided number.</p></td>
+                <td><p>GetValidatorByNumber retrieves information about a validator based on the
+provided number.</p></td>
               </tr>
             
               <tr>
@@ -2370,7 +2437,8 @@
                 <td>GetPublicKey</td>
                 <td><a href="#pactus.GetPublicKeyRequest">GetPublicKeyRequest</a></td>
                 <td><a href="#pactus.GetPublicKeyResponse">GetPublicKeyResponse</a></td>
-                <td><p>GetPublicKey retrieves the public key of an account based on the provided address.</p></td>
+                <td><p>GetPublicKey retrieves the public key of an account based on the provided
+address.</p></td>
               </tr>
             
           </tbody>
@@ -2521,7 +2589,7 @@
         
       
         <h3 id="pactus.GetNodeInfoRequest">GetNodeInfoRequest</h3>
-        <p>Request message for retrieving information about a specific node in the network.</p>
+        <p>Request message for retrieving information about a specific node in the</p><p>network.</p>
 
         
 
@@ -2866,6 +2934,51 @@
       <p></p>
 
       
+        <h3 id="pactus.AddressInfo">AddressInfo</h3>
+        <p>Message of address information.</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>address</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>public_key</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>label</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>path</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="pactus.CreateWalletRequest">CreateWalletRequest</h3>
         <p>Request message for creating a new wallet.</p>
 
@@ -2935,8 +3048,187 @@
 
         
       
+        <h3 id="pactus.GetAddressHistoryRequest">GetAddressHistoryRequest</h3>
+        <p>Request message to get an address transaction history.</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>wallet_name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Name of the wallet. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>address</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Address to get the transaction history of it. </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="pactus.GetAddressHistoryResponse">GetAddressHistoryResponse</h3>
+        <p>Response message to get an address transaction history.</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>history_info</td>
+                  <td><a href="#pactus.HistoryInfo">HistoryInfo</a></td>
+                  <td>repeated</td>
+                  <td><p>Array of address history and activities. </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="pactus.GetNewAddressRequest">GetNewAddressRequest</h3>
+        <p>Request message for generating a new address.</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>wallet_name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Name of the wallet for which the new address is requested. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>address_type</td>
+                  <td><a href="#pactus.AddressType">AddressType</a></td>
+                  <td></td>
+                  <td><p>Address type for the new address. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>label</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Label for the new address. </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="pactus.GetNewAddressResponse">GetNewAddressResponse</h3>
+        <p>Response message containing the new address.</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>wallet_name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Name of the wallet. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>address_info</td>
+                  <td><a href="#pactus.AddressInfo">AddressInfo</a></td>
+                  <td></td>
+                  <td><p>Address information. </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="pactus.GetTotalBalanceRequest">GetTotalBalanceRequest</h3>
+        <p>Request message for obtaining the available balance of a wallet.</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>wallet_name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Name of the wallet. </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="pactus.GetTotalBalanceResponse">GetTotalBalanceResponse</h3>
+        <p>Response message containing the available balance of the wallet.</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>wallet_name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Name of the wallet. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>total_balance</td>
+                  <td><a href="#int64">int64</a></td>
+                  <td></td>
+                  <td><p>The total balance of the wallet in NanoPAC. </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="pactus.GetValidatorAddressRequest">GetValidatorAddressRequest</h3>
-        <p>Request message for obtaining the validator address associated with a public key.</p>
+        <p>Request message for obtaining the validator address associated with a public</p><p>key.</p>
 
         
           <table class="field-table">
@@ -2960,7 +3252,7 @@
         
       
         <h3 id="pactus.GetValidatorAddressResponse">GetValidatorAddressResponse</h3>
-        <p>Response message containing the validator address corresponding to a public key.</p>
+        <p>Response message containing the validator address corresponding to a public</p><p>key.</p>
 
         
           <table class="field-table">
@@ -2974,6 +3266,58 @@
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p>Validator address associated with the public key. </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="pactus.HistoryInfo">HistoryInfo</h3>
+        <p>Message of address history information.</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>transaction_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Hash of transaction. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>time</td>
+                  <td><a href="#uint32">uint32</a></td>
+                  <td></td>
+                  <td><p>transaction timestamp. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>payload_type</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>payload type of transaction. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>description</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>description of transaction. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>amount</td>
+                  <td><a href="#int64">int64</a></td>
+                  <td></td>
+                  <td><p>amount of transaction. </p></td>
                 </tr>
               
             </tbody>
@@ -3260,6 +3604,35 @@
       
 
       
+        <h3 id="pactus.AddressType">AddressType</h3>
+        <p>Enum for the address type.</p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>ADDRESS_TYPE_TREASURY</td>
+                <td>0</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>ADDRESS_TYPE_VALIDATOR</td>
+                <td>1</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>ADDRESS_TYPE_BLS_ACCOUNT</td>
+                <td>2</td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+      
 
       
 
@@ -3297,14 +3670,23 @@
                 <td>LockWallet</td>
                 <td><a href="#pactus.LockWalletRequest">LockWalletRequest</a></td>
                 <td><a href="#pactus.LockWalletResponse">LockWalletResponse</a></td>
-                <td><p>LockWallet locks a currently loaded wallet with the provided password and timeout.</p></td>
+                <td><p>LockWallet locks a currently loaded wallet with the provided password and
+timeout.</p></td>
               </tr>
             
               <tr>
                 <td>UnlockWallet</td>
                 <td><a href="#pactus.UnlockWalletRequest">UnlockWalletRequest</a></td>
                 <td><a href="#pactus.UnlockWalletResponse">UnlockWalletResponse</a></td>
-                <td><p>UnlockWallet unlocks a locked wallet with the provided password and timeout.</p></td>
+                <td><p>UnlockWallet unlocks a locked wallet with the provided password and
+timeout.</p></td>
+              </tr>
+            
+              <tr>
+                <td>GetTotalBalance</td>
+                <td><a href="#pactus.GetTotalBalanceRequest">GetTotalBalanceRequest</a></td>
+                <td><a href="#pactus.GetTotalBalanceResponse">GetTotalBalanceResponse</a></td>
+                <td><p>GetTotalBalance returns the total available balance of the wallet.</p></td>
               </tr>
             
               <tr>
@@ -3318,7 +3700,22 @@
                 <td>GetValidatorAddress</td>
                 <td><a href="#pactus.GetValidatorAddressRequest">GetValidatorAddressRequest</a></td>
                 <td><a href="#pactus.GetValidatorAddressResponse">GetValidatorAddressResponse</a></td>
-                <td><p>GetValidatorAddress retrieves the validator address associated with a public key.</p></td>
+                <td><p>GetValidatorAddress retrieves the validator address associated with a
+public key.</p></td>
+              </tr>
+            
+              <tr>
+                <td>GetNewAddress</td>
+                <td><a href="#pactus.GetNewAddressRequest">GetNewAddressRequest</a></td>
+                <td><a href="#pactus.GetNewAddressResponse">GetNewAddressResponse</a></td>
+                <td><p>GetNewAddress generates a new address for the specified wallet.</p></td>
+              </tr>
+            
+              <tr>
+                <td>GetAddressHistory</td>
+                <td><a href="#pactus.GetAddressHistoryRequest">GetAddressHistoryRequest</a></td>
+                <td><a href="#pactus.GetAddressHistoryResponse">GetAddressHistoryResponse</a></td>
+                <td><p>GetAddressHistory retrieve transaction history of an address.</p></td>
               </tr>
             
           </tbody>

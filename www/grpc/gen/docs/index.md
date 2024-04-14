@@ -11,7 +11,7 @@
     - [GetRawBondTransactionRequest](#pactus-GetRawBondTransactionRequest)
     - [GetRawTransactionResponse](#pactus-GetRawTransactionResponse)
     - [GetRawTransferTransactionRequest](#pactus-GetRawTransferTransactionRequest)
-    - [GetRawUnBondTransactionRequest](#pactus-GetRawUnBondTransactionRequest)
+    - [GetRawUnbondTransactionRequest](#pactus-GetRawUnbondTransactionRequest)
     - [GetRawWithdrawTransactionRequest](#pactus-GetRawWithdrawTransactionRequest)
     - [GetTransactionRequest](#pactus-GetTransactionRequest)
     - [GetTransactionResponse](#pactus-GetTransactionResponse)
@@ -73,10 +73,18 @@
     - [Network](#pactus-Network)
   
 - [wallet.proto](#wallet-proto)
+    - [AddressInfo](#pactus-AddressInfo)
     - [CreateWalletRequest](#pactus-CreateWalletRequest)
     - [CreateWalletResponse](#pactus-CreateWalletResponse)
+    - [GetAddressHistoryRequest](#pactus-GetAddressHistoryRequest)
+    - [GetAddressHistoryResponse](#pactus-GetAddressHistoryResponse)
+    - [GetNewAddressRequest](#pactus-GetNewAddressRequest)
+    - [GetNewAddressResponse](#pactus-GetNewAddressResponse)
+    - [GetTotalBalanceRequest](#pactus-GetTotalBalanceRequest)
+    - [GetTotalBalanceResponse](#pactus-GetTotalBalanceResponse)
     - [GetValidatorAddressRequest](#pactus-GetValidatorAddressRequest)
     - [GetValidatorAddressResponse](#pactus-GetValidatorAddressResponse)
+    - [HistoryInfo](#pactus-HistoryInfo)
     - [LoadWalletRequest](#pactus-LoadWalletRequest)
     - [LoadWalletResponse](#pactus-LoadWalletResponse)
     - [LockWalletRequest](#pactus-LockWalletRequest)
@@ -87,6 +95,8 @@
     - [UnloadWalletResponse](#pactus-UnloadWalletResponse)
     - [UnlockWalletRequest](#pactus-UnlockWalletRequest)
     - [UnlockWalletResponse](#pactus-UnlockWalletResponse)
+  
+    - [AddressType](#pactus-AddressType)
   
     - [Wallet](#pactus-Wallet)
   
@@ -139,8 +149,9 @@ Request message for calculating transaction fee.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| amount | [int64](#int64) |  | Transaction amount. |
-| payloadType | [PayloadType](#pactus-PayloadType) |  | Type of transaction payload. |
+| amount | [int64](#int64) |  | Transaction amount in NanoPAC. |
+| payload_type | [PayloadType](#pactus-PayloadType) |  | Type of transaction payload. |
+| fixed_amount | [bool](#bool) |  | Indicates that amount should be fixed and includes the fee. |
 
 
 
@@ -155,7 +166,8 @@ Response message containing the calculated transaction fee.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| fee | [int64](#int64) |  | Calculated transaction fee. |
+| amount | [int64](#int64) |  | Calculated amount in NanoPAC. |
+| fee | [int64](#int64) |  | Calculated transaction fee in NanoPAC. |
 
 
 
@@ -170,12 +182,12 @@ Request message for retrieving raw details of a bond transaction.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| lock_time | [uint32](#uint32) |  | Lock time for the transaction. |
-| sender | [string](#string) |  | Sender&#39;s address. |
-| receiver | [string](#string) |  | Receiver&#39;s address. |
-| stake | [int64](#int64) |  | Stake amount. |
+| lock_time | [uint32](#uint32) |  | Lock time for the transaction. If not explicitly set, it sets to the last block height. |
+| sender | [string](#string) |  | Sender&#39;s account address. |
+| receiver | [string](#string) |  | Receiver&#39;s validator address. |
+| stake | [int64](#int64) |  | Stake amount in NanoPAC. It should be greater than 0. |
 | public_key | [string](#string) |  | Public key of the validator. |
-| fee | [int64](#int64) |  | Transaction fee. |
+| fee | [int64](#int64) |  | Transaction fee in NanoPAC. If not explicitly set, it is calculated based on the stake. |
 | memo | [string](#string) |  | Transaction memo. |
 
 
@@ -206,11 +218,11 @@ Request message for retrieving raw details of a transfer transaction.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| lock_time | [uint32](#uint32) |  | Lock time for the transaction. |
-| sender | [string](#string) |  | Sender&#39;s address. |
-| receiver | [string](#string) |  | Receiver&#39;s address. |
-| amount | [int64](#int64) |  | Transaction amount. |
-| fee | [int64](#int64) |  | Transaction fee. |
+| lock_time | [uint32](#uint32) |  | Lock time for the transaction. If not explicitly set, it sets to the last block height. |
+| sender | [string](#string) |  | Sender&#39;s account address. |
+| receiver | [string](#string) |  | Receiver&#39;s account address. |
+| amount | [int64](#int64) |  | Transfer amount in NanoPAC. It should be greater than 0. |
+| fee | [int64](#int64) |  | Transaction fee in NanoPAC. If not explicitly set, it is calculated based on the amount. |
 | memo | [string](#string) |  | Transaction memo. |
 
 
@@ -218,15 +230,15 @@ Request message for retrieving raw details of a transfer transaction.
 
 
 
-<a name="pactus-GetRawUnBondTransactionRequest"></a>
+<a name="pactus-GetRawUnbondTransactionRequest"></a>
 
-### GetRawUnBondTransactionRequest
+### GetRawUnbondTransactionRequest
 Request message for retrieving raw details of an unbond transaction.
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| lock_time | [uint32](#uint32) |  | Lock time for the transaction. |
+| lock_time | [uint32](#uint32) |  | Lock time for the transaction. If not explicitly set, it sets to the last block height. |
 | validator_address | [string](#string) |  | Address of the validator to unbond from. |
 | memo | [string](#string) |  | Transaction memo. |
 
@@ -243,11 +255,11 @@ Request message for retrieving raw details of a withdraw transaction.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| lock_time | [uint32](#uint32) |  | Lock time for the transaction. |
+| lock_time | [uint32](#uint32) |  | Lock time for the transaction. If not explicitly set, it sets to the last block height. |
 | validator_address | [string](#string) |  | Address of the validator to withdraw from. |
 | account_address | [string](#string) |  | Address of the account to withdraw to. |
-| fee | [int64](#int64) |  | Transaction fee. |
-| amount | [int64](#int64) |  | Withdrawal amount. |
+| amount | [int64](#int64) |  | Withdrawal amount in NanoPAC. It should be greater than 0. |
+| fee | [int64](#int64) |  | Transaction fee in NanoPAC. If not explicitly set, it is calculated based on the amount. |
 | memo | [string](#string) |  | Transaction memo. |
 
 
@@ -298,7 +310,7 @@ Payload for a bond transaction.
 | ----- | ---- | ----- | ----------- |
 | sender | [string](#string) |  | Sender&#39;s address. |
 | receiver | [string](#string) |  | Receiver&#39;s address. |
-| stake | [int64](#int64) |  | Stake amount. |
+| stake | [int64](#int64) |  | Stake amount in NanoPAC. |
 
 
 
@@ -331,7 +343,7 @@ Payload for a transfer transaction.
 | ----- | ---- | ----- | ----------- |
 | sender | [string](#string) |  | Sender&#39;s address. |
 | receiver | [string](#string) |  | Receiver&#39;s address. |
-| amount | [int64](#int64) |  | Transaction amount. |
+| amount | [int64](#int64) |  | Transaction amount in NanoPAC. |
 
 
 
@@ -363,7 +375,7 @@ Payload for a withdraw transaction.
 | ----- | ---- | ----- | ----------- |
 | from | [string](#string) |  | Address to withdraw from. |
 | to | [string](#string) |  | Address to withdraw to. |
-| amount | [int64](#int64) |  | Withdrawal amount. |
+| amount | [int64](#int64) |  | Withdrawal amount in NanoPAC. |
 
 
 
@@ -382,9 +394,9 @@ Information about a transaction.
 | data | [bytes](#bytes) |  | Transaction data. |
 | version | [int32](#int32) |  | Transaction version. |
 | lock_time | [uint32](#uint32) |  | Lock time for the transaction. |
-| value | [int64](#int64) |  | Transaction value. |
-| fee | [int64](#int64) |  | Transaction fee. |
-| payloadType | [PayloadType](#pactus-PayloadType) |  | Type of transaction payload. |
+| value | [int64](#int64) |  | Transaction value in NanoPAC. |
+| fee | [int64](#int64) |  | Transaction fee in NanoPAC. |
+| payload_type | [PayloadType](#pactus-PayloadType) |  | Type of transaction payload. |
 | transfer | [PayloadTransfer](#pactus-PayloadTransfer) |  | Transfer payload. |
 | bond | [PayloadBond](#pactus-PayloadBond) |  | Bond payload. |
 | sortition | [PayloadSortition](#pactus-PayloadSortition) |  | Sortition payload. |
@@ -424,8 +436,8 @@ Enumeration for verbosity level when requesting transaction details.
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| TRANSACTION_DATA | 0 | Request only transaction data. |
-| TRANSACTION_INFO | 1 | Request detailed transaction information. |
+| TRANSACTION_DATA | 0 | Request transaction data only. |
+| TRANSACTION_INFO | 1 | Request transaction details. |
 
 
  
@@ -436,7 +448,8 @@ Enumeration for verbosity level when requesting transaction details.
 <a name="pactus-Transaction"></a>
 
 ### Transaction
-Transaction service defines various RPC methods for interacting with transactions.
+Transaction service defines various RPC methods for interacting with
+transactions.
 
 | Method Name | Request Type | Response Type | Description |
 | ----------- | ------------ | ------------- | ------------|
@@ -445,7 +458,7 @@ Transaction service defines various RPC methods for interacting with transaction
 | BroadcastTransaction | [BroadcastTransactionRequest](#pactus-BroadcastTransactionRequest) | [BroadcastTransactionResponse](#pactus-BroadcastTransactionResponse) | BroadcastTransaction broadcasts a signed transaction to the network. |
 | GetRawTransferTransaction | [GetRawTransferTransactionRequest](#pactus-GetRawTransferTransactionRequest) | [GetRawTransactionResponse](#pactus-GetRawTransactionResponse) | GetRawTransferTransaction retrieves raw details of a transfer transaction. |
 | GetRawBondTransaction | [GetRawBondTransactionRequest](#pactus-GetRawBondTransactionRequest) | [GetRawTransactionResponse](#pactus-GetRawTransactionResponse) | GetRawBondTransaction retrieves raw details of a bond transaction. |
-| GetRawUnBondTransaction | [GetRawUnBondTransactionRequest](#pactus-GetRawUnBondTransactionRequest) | [GetRawTransactionResponse](#pactus-GetRawTransactionResponse) | GetRawUnBondTransaction retrieves raw details of an unbond transaction. |
+| GetRawUnbondTransaction | [GetRawUnbondTransactionRequest](#pactus-GetRawUnbondTransactionRequest) | [GetRawTransactionResponse](#pactus-GetRawTransactionResponse) | GetRawUnbondTransaction retrieves raw details of an unbond transaction. |
 | GetRawWithdrawTransaction | [GetRawWithdrawTransactionRequest](#pactus-GetRawWithdrawTransactionRequest) | [GetRawTransactionResponse](#pactus-GetRawTransactionResponse) | GetRawWithdrawTransaction retrieves raw details of a withdraw transaction. |
 
  
@@ -470,7 +483,7 @@ Message containing information about an account.
 | hash | [bytes](#bytes) |  | Hash of the account. |
 | data | [bytes](#bytes) |  | Account data. |
 | number | [int32](#int32) |  | Account number. |
-| balance | [int64](#int64) |  | Account balance. |
+| balance | [int64](#int64) |  | Account balance in NanoPAC. |
 | address | [string](#string) |  | Address of the account. |
 
 
@@ -651,11 +664,11 @@ Message containing the response with block information.
 | ----- | ---- | ----- | ----------- |
 | height | [uint32](#uint32) |  | Height of the block. |
 | hash | [bytes](#bytes) |  | Hash of the block. |
-| data | [bytes](#bytes) |  | Block data. |
+| data | [bytes](#bytes) |  | Block data, only available if the verbosity level is set to BLOCK_DATA. |
 | block_time | [uint32](#uint32) |  | Block timestamp. |
 | header | [BlockHeaderInfo](#pactus-BlockHeaderInfo) |  | Block header information. |
 | prev_cert | [CertificateInfo](#pactus-CertificateInfo) |  | Certificate information of the previous block. |
-| txs | [TransactionInfo](#pactus-TransactionInfo) | repeated | List of transactions in the block. |
+| txs | [TransactionInfo](#pactus-TransactionInfo) | repeated | List of transactions in the block. Transaction information is available when the verbosity level is set to BLOCK_TRANSACTIONS. |
 
 
 
@@ -830,7 +843,7 @@ Message containing information about a validator.
 | data | [bytes](#bytes) |  | Validator data. |
 | public_key | [string](#string) |  | Public key of the validator. |
 | number | [int32](#int32) |  | Validator number. |
-| stake | [int64](#int64) |  | Validator stake. |
+| stake | [int64](#int64) |  | Validator stake in NanoPAC. |
 | last_bonding_height | [uint32](#uint32) |  | Last bonding height. |
 | last_sortition_height | [uint32](#uint32) |  | Last sortition height. |
 | unbonding_height | [uint32](#uint32) |  | Unbonding height. |
@@ -872,8 +885,8 @@ Enumeration for verbosity level when requesting block information.
 | Name | Number | Description |
 | ---- | ------ | ----------- |
 | BLOCK_DATA | 0 | Request block data only. |
-| BLOCK_INFO | 1 | Request block information only. |
-| BLOCK_TRANSACTIONS | 2 | Request block transactions only. |
+| BLOCK_INFO | 1 | Request block information and transaction IDs. |
+| BLOCK_TRANSACTIONS | 2 | Request block information and transaction details. |
 
 
 
@@ -990,7 +1003,8 @@ Response message containing information about the overall network.
 <a name="pactus-GetNodeInfoRequest"></a>
 
 ### GetNodeInfoRequest
-Request message for retrieving information about a specific node in the network.
+Request message for retrieving information about a specific node in the
+network.
 
 
 
@@ -1113,6 +1127,24 @@ Network service provides RPCs for retrieving information about the network.
 
 
 
+<a name="pactus-AddressInfo"></a>
+
+### AddressInfo
+Message of address information.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| address | [string](#string) |  |  |
+| public_key | [string](#string) |  |  |
+| label | [string](#string) |  |  |
+| path | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="pactus-CreateWalletRequest"></a>
 
 ### CreateWalletRequest
@@ -1146,10 +1178,106 @@ Response message containing the name of the created wallet.
 
 
 
+<a name="pactus-GetAddressHistoryRequest"></a>
+
+### GetAddressHistoryRequest
+Request message to get an address transaction history.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| wallet_name | [string](#string) |  | Name of the wallet. |
+| address | [string](#string) |  | Address to get the transaction history of it. |
+
+
+
+
+
+
+<a name="pactus-GetAddressHistoryResponse"></a>
+
+### GetAddressHistoryResponse
+Response message to get an address transaction history.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| history_info | [HistoryInfo](#pactus-HistoryInfo) | repeated | Array of address history and activities. |
+
+
+
+
+
+
+<a name="pactus-GetNewAddressRequest"></a>
+
+### GetNewAddressRequest
+Request message for generating a new address.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| wallet_name | [string](#string) |  | Name of the wallet for which the new address is requested. |
+| address_type | [AddressType](#pactus-AddressType) |  | Address type for the new address. |
+| label | [string](#string) |  | Label for the new address. |
+
+
+
+
+
+
+<a name="pactus-GetNewAddressResponse"></a>
+
+### GetNewAddressResponse
+Response message containing the new address.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| wallet_name | [string](#string) |  | Name of the wallet. |
+| address_info | [AddressInfo](#pactus-AddressInfo) |  | Address information. |
+
+
+
+
+
+
+<a name="pactus-GetTotalBalanceRequest"></a>
+
+### GetTotalBalanceRequest
+Request message for obtaining the available balance of a wallet.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| wallet_name | [string](#string) |  | Name of the wallet. |
+
+
+
+
+
+
+<a name="pactus-GetTotalBalanceResponse"></a>
+
+### GetTotalBalanceResponse
+Response message containing the available balance of the wallet.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| wallet_name | [string](#string) |  | Name of the wallet. |
+| total_balance | [int64](#int64) |  | The total balance of the wallet in NanoPAC. |
+
+
+
+
+
+
 <a name="pactus-GetValidatorAddressRequest"></a>
 
 ### GetValidatorAddressRequest
-Request message for obtaining the validator address associated with a public key.
+Request message for obtaining the validator address associated with a public
+key.
 
 
 | Field | Type | Label | Description |
@@ -1164,12 +1292,32 @@ Request message for obtaining the validator address associated with a public key
 <a name="pactus-GetValidatorAddressResponse"></a>
 
 ### GetValidatorAddressResponse
-Response message containing the validator address corresponding to a public key.
+Response message containing the validator address corresponding to a public
+key.
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | address | [string](#string) |  | Validator address associated with the public key. |
+
+
+
+
+
+
+<a name="pactus-HistoryInfo"></a>
+
+### HistoryInfo
+Message of address history information.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| transaction_id | [string](#string) |  | Hash of transaction. |
+| time | [uint32](#uint32) |  | transaction timestamp. |
+| payload_type | [string](#string) |  | payload type of transaction. |
+| description | [string](#string) |  | description of transaction. |
+| amount | [int64](#int64) |  | amount of transaction. |
 
 
 
@@ -1332,6 +1480,19 @@ Response message containing the name of the unlocked wallet.
 
  
 
+
+<a name="pactus-AddressType"></a>
+
+### AddressType
+Enum for the address type.
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| ADDRESS_TYPE_TREASURY | 0 |  |
+| ADDRESS_TYPE_VALIDATOR | 1 |  |
+| ADDRESS_TYPE_BLS_ACCOUNT | 2 |  |
+
+
  
 
  
@@ -1349,8 +1510,11 @@ Define the Wallet service with various RPC methods for wallet management.
 | UnloadWallet | [UnloadWalletRequest](#pactus-UnloadWalletRequest) | [UnloadWalletResponse](#pactus-UnloadWalletResponse) | UnloadWallet unloads a currently loaded wallet with the specified name. |
 | LockWallet | [LockWalletRequest](#pactus-LockWalletRequest) | [LockWalletResponse](#pactus-LockWalletResponse) | LockWallet locks a currently loaded wallet with the provided password and timeout. |
 | UnlockWallet | [UnlockWalletRequest](#pactus-UnlockWalletRequest) | [UnlockWalletResponse](#pactus-UnlockWalletResponse) | UnlockWallet unlocks a locked wallet with the provided password and timeout. |
+| GetTotalBalance | [GetTotalBalanceRequest](#pactus-GetTotalBalanceRequest) | [GetTotalBalanceResponse](#pactus-GetTotalBalanceResponse) | GetTotalBalance returns the total available balance of the wallet. |
 | SignRawTransaction | [SignRawTransactionRequest](#pactus-SignRawTransactionRequest) | [SignRawTransactionResponse](#pactus-SignRawTransactionResponse) | SignRawTransaction signs a raw transaction for a specified wallet. |
 | GetValidatorAddress | [GetValidatorAddressRequest](#pactus-GetValidatorAddressRequest) | [GetValidatorAddressResponse](#pactus-GetValidatorAddressResponse) | GetValidatorAddress retrieves the validator address associated with a public key. |
+| GetNewAddress | [GetNewAddressRequest](#pactus-GetNewAddressRequest) | [GetNewAddressResponse](#pactus-GetNewAddressResponse) | GetNewAddress generates a new address for the specified wallet. |
+| GetAddressHistory | [GetAddressHistoryRequest](#pactus-GetAddressHistoryRequest) | [GetAddressHistoryResponse](#pactus-GetAddressHistoryResponse) | GetAddressHistory retrieve transaction history of an address. |
 
  
 

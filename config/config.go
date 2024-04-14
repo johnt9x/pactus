@@ -4,6 +4,7 @@ import (
 	"bytes"
 	_ "embed"
 	"encoding/json"
+	"fmt"
 	"os"
 
 	"github.com/pactus-project/pactus/consensus"
@@ -13,10 +14,10 @@ import (
 	"github.com/pactus-project/pactus/sync"
 	"github.com/pactus-project/pactus/txpool"
 	"github.com/pactus-project/pactus/util"
-	"github.com/pactus-project/pactus/util/errors"
 	"github.com/pactus-project/pactus/util/logger"
 	"github.com/pactus-project/pactus/www/grpc"
 	"github.com/pactus-project/pactus/www/http"
+	"github.com/pactus-project/pactus/www/jsonrpc"
 	"github.com/pactus-project/pactus/www/nanomsg"
 	"github.com/pelletier/go-toml"
 )
@@ -38,6 +39,7 @@ type Config struct {
 	Consensus *consensus.Config `toml:"-"`
 	Logger    *logger.Config    `toml:"logger"`
 	GRPC      *grpc.Config      `toml:"grpc"`
+	JSONRPC   *jsonrpc.Config   `toml:"jsonrpc"`
 	HTTP      *http.Config      `toml:"http"`
 	Nanomsg   *nanomsg.Config   `toml:"nanomsg"`
 }
@@ -54,7 +56,9 @@ type NodeConfig struct {
 }
 
 func DefaultNodeConfig() *NodeConfig {
-	return &NodeConfig{}
+	return &NodeConfig{
+		RewardAddresses: []string{},
+	}
 }
 
 // BasicCheck performs basic checks on the configuration.
@@ -62,11 +66,15 @@ func (conf *NodeConfig) BasicCheck() error {
 	for _, addrStr := range conf.RewardAddresses {
 		addr, err := crypto.AddressFromString(addrStr)
 		if err != nil {
-			return errors.Errorf(errors.ErrInvalidConfig, "invalid reward address: %v", err.Error())
+			return Error{
+				Reason: fmt.Sprintf("invalid reward address: %v", err.Error()),
+			}
 		}
 
 		if !addr.IsAccountAddress() {
-			return errors.Errorf(errors.ErrInvalidConfig, "reward address is not an account address: %s", addrStr)
+			return Error{
+				Reason: fmt.Sprintf("reward address is not an account address: %s", addrStr),
+			}
 		}
 	}
 
@@ -83,6 +91,7 @@ func defaultConfig() *Config {
 		Consensus: consensus.DefaultConfig(),
 		Logger:    logger.DefaultConfig(),
 		GRPC:      grpc.DefaultConfig(),
+		JSONRPC:   jsonrpc.DefaultConfig(),
 		HTTP:      http.DefaultConfig(),
 		Nanomsg:   nanomsg.DefaultConfig(),
 	}
@@ -110,8 +119,11 @@ func DefaultConfigMainnet() *Config {
 	conf.Network.DefaultPort = 21888
 	conf.GRPC.Enable = true
 	conf.GRPC.Listen = "127.0.0.1:50051"
+	conf.GRPC.BasicAuth = ""
 	conf.GRPC.Gateway.Enable = false
 	conf.GRPC.Gateway.Listen = "127.0.0.1:8080"
+	conf.JSONRPC.Enable = false
+	conf.JSONRPC.Listen = "127.0.0.1:8545"
 	conf.HTTP.Enable = false
 	conf.HTTP.Listen = "127.0.0.1:80"
 	conf.Nanomsg.Enable = false
@@ -122,7 +134,12 @@ func DefaultConfigMainnet() *Config {
 
 func DefaultConfigTestnet() *Config {
 	conf := defaultConfig()
-	conf.Network.DefaultBootstrapAddrStrings = []string{}
+	conf.Network.DefaultBootstrapAddrStrings = []string{
+		"/dns/testnet1.pactus.org/tcp/21777/p2p/12D3KooWR7ZB3nGih1Fz7Yg83Zap8Cpxr73T6PPihBsEpTG5BZyk",
+		"/dns/testnet2.pactus.org/tcp/21777/p2p/12D3KooWQcDuFDMGsw6gG7oNFw7C4x7ozoMu69J7WEAojKCaNzji",
+		"/dns/testnet3.pactus.org/tcp/21777/p2p/12D3KooWLsAPSJ4xowd9thGbPmbweBT6sg3nEiPjDJccaWZacsUR",
+		"/dns/testnet4.pactus.org/tcp/21777/p2p/12D3KooWJKYdHzWZGibnj74NSSgKRu4Ez6MijDWMfLfXxeL4un6v",
+	}
 	conf.Network.MaxConns = 64
 	conf.Network.EnableNATService = false
 	conf.Network.EnableUPnP = false
@@ -133,6 +150,8 @@ func DefaultConfigTestnet() *Config {
 	conf.GRPC.Listen = "[::]:50052"
 	conf.GRPC.Gateway.Enable = true
 	conf.GRPC.Gateway.Listen = "[::]:8080"
+	conf.JSONRPC.Enable = false
+	conf.JSONRPC.Listen = "127.0.0.1:8545"
 	conf.HTTP.Enable = false
 	conf.HTTP.Listen = "[::]:80"
 	conf.Nanomsg.Enable = false
@@ -149,11 +168,17 @@ func DefaultConfigLocalnet() *Config {
 	conf.Network.BootstrapAddrStrings = []string{}
 	conf.Network.MaxConns = 0
 	conf.Network.NetworkName = "pactus-localnet"
-	conf.Network.DefaultPort = 21666
+	conf.Network.DefaultPort = 0
+	conf.Network.ForcePrivateNetwork = true
+	conf.Network.EnableMdns = true
+	conf.Sync.Moniker = "localnet-1"
 	conf.GRPC.Enable = true
+	conf.GRPC.EnableWallet = true
 	conf.GRPC.Listen = "[::]:50052"
 	conf.GRPC.Gateway.Enable = true
-	conf.GRPC.Gateway.Listen = "[::]:0"
+	conf.GRPC.Gateway.Listen = "[::]:8080"
+	conf.JSONRPC.Enable = true
+	conf.JSONRPC.Listen = "127.0.0.1:8545"
 	conf.HTTP.Enable = true
 	conf.HTTP.Listen = "[::]:0"
 	conf.Nanomsg.Enable = true
@@ -225,6 +250,9 @@ func (conf *Config) BasicCheck() error {
 		return err
 	}
 	if err := conf.Nanomsg.BasicCheck(); err != nil {
+		return err
+	}
+	if err := conf.JSONRPC.BasicCheck(); err != nil {
 		return err
 	}
 

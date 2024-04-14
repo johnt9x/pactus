@@ -6,7 +6,8 @@ import transaction_pb2 as transaction__pb2
 
 
 class TransactionStub(object):
-    """Transaction service defines various RPC methods for interacting with transactions.
+    """Transaction service defines various RPC methods for interacting with
+    transactions.
     """
 
     def __init__(self, channel):
@@ -40,9 +41,9 @@ class TransactionStub(object):
                 request_serializer=transaction__pb2.GetRawBondTransactionRequest.SerializeToString,
                 response_deserializer=transaction__pb2.GetRawTransactionResponse.FromString,
                 )
-        self.GetRawUnBondTransaction = channel.unary_unary(
-                '/pactus.Transaction/GetRawUnBondTransaction',
-                request_serializer=transaction__pb2.GetRawUnBondTransactionRequest.SerializeToString,
+        self.GetRawUnbondTransaction = channel.unary_unary(
+                '/pactus.Transaction/GetRawUnbondTransaction',
+                request_serializer=transaction__pb2.GetRawUnbondTransactionRequest.SerializeToString,
                 response_deserializer=transaction__pb2.GetRawTransactionResponse.FromString,
                 )
         self.GetRawWithdrawTransaction = channel.unary_unary(
@@ -53,18 +54,21 @@ class TransactionStub(object):
 
 
 class TransactionServicer(object):
-    """Transaction service defines various RPC methods for interacting with transactions.
+    """Transaction service defines various RPC methods for interacting with
+    transactions.
     """
 
     def GetTransaction(self, request, context):
-        """GetTransaction retrieves transaction details based on the provided request parameters.
+        """GetTransaction retrieves transaction details based on the provided request
+        parameters.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def CalculateFee(self, request, context):
-        """CalculateFee calculates the transaction fee based on the specified amount and payload type.
+        """CalculateFee calculates the transaction fee based on the specified amount
+        and payload type.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -91,8 +95,8 @@ class TransactionServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def GetRawUnBondTransaction(self, request, context):
-        """GetRawUnBondTransaction retrieves raw details of an unbond transaction.
+    def GetRawUnbondTransaction(self, request, context):
+        """GetRawUnbondTransaction retrieves raw details of an unbond transaction.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -133,9 +137,9 @@ def add_TransactionServicer_to_server(servicer, server):
                     request_deserializer=transaction__pb2.GetRawBondTransactionRequest.FromString,
                     response_serializer=transaction__pb2.GetRawTransactionResponse.SerializeToString,
             ),
-            'GetRawUnBondTransaction': grpc.unary_unary_rpc_method_handler(
-                    servicer.GetRawUnBondTransaction,
-                    request_deserializer=transaction__pb2.GetRawUnBondTransactionRequest.FromString,
+            'GetRawUnbondTransaction': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetRawUnbondTransaction,
+                    request_deserializer=transaction__pb2.GetRawUnbondTransactionRequest.FromString,
                     response_serializer=transaction__pb2.GetRawTransactionResponse.SerializeToString,
             ),
             'GetRawWithdrawTransaction': grpc.unary_unary_rpc_method_handler(
@@ -151,7 +155,8 @@ def add_TransactionServicer_to_server(servicer, server):
 
  # This class is part of an EXPERIMENTAL API.
 class Transaction(object):
-    """Transaction service defines various RPC methods for interacting with transactions.
+    """Transaction service defines various RPC methods for interacting with
+    transactions.
     """
 
     @staticmethod
@@ -240,7 +245,7 @@ class Transaction(object):
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
-    def GetRawUnBondTransaction(request,
+    def GetRawUnbondTransaction(request,
             target,
             options=(),
             channel_credentials=None,
@@ -250,8 +255,8 @@ class Transaction(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/pactus.Transaction/GetRawUnBondTransaction',
-            transaction__pb2.GetRawUnBondTransactionRequest.SerializeToString,
+        return grpc.experimental.unary_unary(request, target, '/pactus.Transaction/GetRawUnbondTransaction',
+            transaction__pb2.GetRawUnbondTransactionRequest.SerializeToString,
             transaction__pb2.GetRawTransactionResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

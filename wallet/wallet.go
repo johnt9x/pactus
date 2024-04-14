@@ -3,7 +3,6 @@ package wallet
 import (
 	_ "embed"
 	"encoding/json"
-	"errors"
 	"path"
 	"time"
 
@@ -11,6 +10,7 @@ import (
 	"github.com/pactus-project/pactus/crypto"
 	"github.com/pactus-project/pactus/crypto/bls"
 	"github.com/pactus-project/pactus/genesis"
+	"github.com/pactus-project/pactus/types/amount"
 	"github.com/pactus-project/pactus/types/tx"
 	"github.com/pactus-project/pactus/types/tx/payload"
 	"github.com/pactus-project/pactus/util"
@@ -19,19 +19,14 @@ import (
 )
 
 type Wallet struct {
-	store  *store
-	path   string
-	client *grpcClient
+	store *store
+	path  string
+
+	lazyClient *grpcClient
 }
 
 //go:embed servers.json
 var serversJSON []byte
-
-type serverInfo struct {
-	Name string `json:"name"`
-	IP   string `json:"ip"`
-}
-type servers = map[string][]serverInfo
 
 // GenerateMnemonic is a wrapper for `vault.GenerateMnemonic`.
 func GenerateMnemonic(entropy int) (string, error) {
@@ -122,34 +117,38 @@ func newWallet(walletPath string, store *store, offline bool) (*Wallet, error) {
 	}
 
 	if !offline {
-		err := w.connectToRandomServer()
+		serversInfo := map[string][]string{}
+		err := json.Unmarshal(serversJSON, &serversInfo)
 		if err != nil {
 			return nil, err
 		}
+
+		var netServers []string
+		switch w.store.Network {
+		case genesis.Mainnet:
+			// mainnet
+			netServers = serversInfo["mainnet"]
+
+		case genesis.Testnet:
+			// testnet
+			netServers = serversInfo["testnet"]
+
+		case genesis.Localnet:
+			// localnet
+			netServers = []string{"localhost:50052"}
+
+		default:
+			return nil, ErrInvalidNetwork
+		}
+
+		w.lazyClient = newGRPCClient(netServers)
 	}
 
 	return w, nil
 }
 
-func (w *Wallet) Connect(addr string) error {
-	return w.tryToConnect(addr)
-}
-
-func (w *Wallet) tryToConnect(addr string) error {
-	client, err := newGRPCClient(addr)
-	if err != nil {
-		return err
-	}
-
-	// Check if client is responding
-	_, err = client.getBlockchainInfo()
-	if err != nil {
-		return err
-	}
-
-	w.client = client
-
-	return nil
+func (w *Wallet) SetServerAddr(addr string) {
+	w.lazyClient = newGRPCClient([]string{addr})
 }
 
 func (w *Wallet) Name() string {
@@ -157,44 +156,7 @@ func (w *Wallet) Name() string {
 }
 
 func (w *Wallet) IsOffline() bool {
-	return w.client == nil
-}
-
-func (w *Wallet) connectToRandomServer() error {
-	serversInfo := servers{}
-	err := json.Unmarshal(serversJSON, &serversInfo)
-	if err != nil {
-		return err
-	}
-
-	var netServers []serverInfo
-	switch w.store.Network {
-	case genesis.Mainnet:
-		// mainnet
-		netServers = serversInfo["mainnet"]
-
-	case genesis.Testnet:
-		// testnet
-		netServers = serversInfo["testnet"]
-
-	case genesis.Localnet:
-		// localnet
-		netServers = []serverInfo{{IP: "localhost:50052"}}
-
-	default:
-		return ErrInvalidNetwork
-	}
-
-	for i := 0; i < 3; i++ {
-		n := util.RandInt32(int32(len(netServers)))
-		serverInfo := netServers[n]
-		err := w.tryToConnect(serverInfo.IP)
-		if err == nil {
-			return nil
-		}
-	}
-
-	return errors.New("unable to connect to the servers")
+	return w.lazyClient == nil
 }
 
 func (w *Wallet) Path() string {
@@ -211,48 +173,52 @@ func (w *Wallet) Save() error {
 }
 
 // Balance returns balance of the account associated with the address..
-func (w *Wallet) Balance(addrStr string) (int64, error) {
-	addr, err := crypto.AddressFromString(addrStr)
+func (w *Wallet) Balance(addrStr string) (amount.Amount, error) {
+	if w.IsOffline() {
+		return 0, ErrOffline
+	}
+
+	acc, err := w.lazyClient.getAccount(addrStr)
 	if err != nil {
 		return 0, err
 	}
 
-	if w.client == nil {
-		return 0, ErrOffline
-	}
-
-	acc, _ := w.client.getAccount(addr)
-	if acc != nil {
-		return acc.Balance, nil
-	}
-
-	return 0, nil
+	return amount.Amount(acc.Balance), nil
 }
 
 // Stake returns stake of the validator associated with the address..
-func (w *Wallet) Stake(addrStr string) (int64, error) {
-	addr, err := crypto.AddressFromString(addrStr)
+func (w *Wallet) Stake(addrStr string) (amount.Amount, error) {
+	if w.IsOffline() {
+		return 0, ErrOffline
+	}
+
+	val, err := w.lazyClient.getValidator(addrStr)
 	if err != nil {
 		return 0, err
 	}
 
-	if w.client == nil {
-		return 0, ErrOffline
+	return amount.Amount(val.Stake), nil
+}
+
+// TotalBalance return the total available balance of the wallet.
+func (w *Wallet) TotalBalance() amount.Amount {
+	totalBalance := int64(0)
+	infos := w.store.Vault.AllAccountAddresses()
+	for _, info := range infos {
+		acc, _ := w.lazyClient.getAccount(info.Address)
+		if acc != nil {
+			totalBalance += acc.Balance
+		}
 	}
 
-	val, _ := w.client.getValidator(addr)
-	if val != nil {
-		return val.Stake, nil
-	}
-
-	return 0, nil
+	return amount.Amount(totalBalance)
 }
 
 // MakeTransferTx creates a new transfer transaction based on the given parameters.
-func (w *Wallet) MakeTransferTx(sender, receiver string, amount int64,
+func (w *Wallet) MakeTransferTx(sender, receiver string, amt amount.Amount,
 	options ...TxOption,
 ) (*tx.Tx, error) {
-	maker, err := newTxBuilder(w.client, options...)
+	maker, err := newTxBuilder(w.lazyClient, options...)
 	if err != nil {
 		return nil, err
 	}
@@ -264,17 +230,17 @@ func (w *Wallet) MakeTransferTx(sender, receiver string, amount int64,
 	if err != nil {
 		return nil, err
 	}
-	maker.amount = amount
+	maker.amount = amt
 	maker.typ = payload.TypeTransfer
 
 	return maker.build()
 }
 
 // MakeBondTx creates a new bond transaction based on the given parameters.
-func (w *Wallet) MakeBondTx(sender, receiver, pubKey string, amount int64,
+func (w *Wallet) MakeBondTx(sender, receiver, pubKey string, amt amount.Amount,
 	options ...TxOption,
 ) (*tx.Tx, error) {
-	maker, err := newTxBuilder(w.client, options...)
+	maker, err := newTxBuilder(w.lazyClient, options...)
 	if err != nil {
 		return nil, err
 	}
@@ -299,7 +265,7 @@ func (w *Wallet) MakeBondTx(sender, receiver, pubKey string, amount int64,
 			return nil, err
 		}
 	}
-	maker.amount = amount
+	maker.amount = amt
 	maker.typ = payload.TypeBond
 
 	return maker.build()
@@ -307,7 +273,7 @@ func (w *Wallet) MakeBondTx(sender, receiver, pubKey string, amount int64,
 
 // MakeUnbondTx creates a new unbond transaction based on the given parameters.
 func (w *Wallet) MakeUnbondTx(addr string, opts ...TxOption) (*tx.Tx, error) {
-	maker, err := newTxBuilder(w.client, opts...)
+	maker, err := newTxBuilder(w.lazyClient, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -322,10 +288,10 @@ func (w *Wallet) MakeUnbondTx(addr string, opts ...TxOption) (*tx.Tx, error) {
 
 // MakeWithdrawTx creates a new withdraw transaction based on the given
 // parameters.
-func (w *Wallet) MakeWithdrawTx(sender, receiver string, amount int64,
+func (w *Wallet) MakeWithdrawTx(sender, receiver string, amt amount.Amount,
 	options ...TxOption,
 ) (*tx.Tx, error) {
-	maker, err := newTxBuilder(w.client, options...)
+	maker, err := newTxBuilder(w.lazyClient, options...)
 	if err != nil {
 		return nil, err
 	}
@@ -337,7 +303,7 @@ func (w *Wallet) MakeWithdrawTx(sender, receiver string, amount int64,
 	if err != nil {
 		return nil, err
 	}
-	maker.amount = amount
+	maker.amount = amt
 	maker.typ = payload.TypeWithdraw
 
 	return maker.build()
@@ -357,11 +323,11 @@ func (w *Wallet) SignTransaction(password string, trx *tx.Tx) error {
 }
 
 func (w *Wallet) BroadcastTransaction(trx *tx.Tx) (string, error) {
-	if w.client == nil {
+	if w.IsOffline() {
 		return "", ErrOffline
 	}
 
-	id, err := w.client.sendTx(trx)
+	id, err := w.lazyClient.sendTx(trx)
 	if err != nil {
 		return "", err
 	}
@@ -372,8 +338,8 @@ func (w *Wallet) BroadcastTransaction(trx *tx.Tx) (string, error) {
 	return id.String(), nil
 }
 
-func (w *Wallet) CalculateFee(amount int64, payloadType payload.Type) (int64, error) {
-	return w.client.getFee(amount, payloadType)
+func (w *Wallet) CalculateFee(amt amount.Amount, payloadType payload.Type) (amount.Amount, error) {
+	return w.lazyClient.getFee(amt, payloadType)
 }
 
 func (w *Wallet) UpdatePassword(oldPassword, newPassword string) error {
@@ -401,6 +367,10 @@ func (w *Wallet) AllValidatorAddresses() []vault.AddressInfo {
 	return w.store.Vault.AllValidatorAddresses()
 }
 
+func (w *Wallet) AllAccountAddresses() []vault.AddressInfo {
+	return w.store.Vault.AllAccountAddresses()
+}
+
 func (w *Wallet) AddressFromPath(p string) *vault.AddressInfo {
 	return w.store.Vault.AddressFromPath(p)
 }
@@ -424,13 +394,13 @@ func (w *Wallet) PrivateKeys(password string, addrs []string) ([]crypto.PrivateK
 
 // NewBLSAccountAddress create a new BLS-based account address and
 // associates it with the given label.
-func (w *Wallet) NewBLSAccountAddress(label string) (string, error) {
+func (w *Wallet) NewBLSAccountAddress(label string) (*vault.AddressInfo, error) {
 	return w.store.Vault.NewBLSAccountAddress(label)
 }
 
 // NewValidatorAddress creates a new BLS validator address and
 // associates it with the given label.
-func (w *Wallet) NewValidatorAddress(label string) (string, error) {
+func (w *Wallet) NewValidatorAddress(label string) (*vault.AddressInfo, error) {
 	return w.store.Vault.NewValidatorAddress(label)
 }
 
@@ -458,7 +428,7 @@ func (w *Wallet) AddTransaction(id tx.ID) error {
 		return ErrHistoryExists
 	}
 
-	trxRes, err := w.client.getTransaction(id)
+	trxRes, err := w.lazyClient.getTransaction(id)
 	if err != nil {
 		return err
 	}
@@ -485,14 +455,14 @@ func (w *Wallet) AddTransaction(id tx.ID) error {
 	}
 
 	if w.store.Vault.Contains(sender) {
-		amount := -(trxRes.Transaction.Fee + trxRes.Transaction.Value)
-		w.store.History.addActivity(sender, amount, trxRes)
+		amt := amount.Amount(-(trxRes.Transaction.Fee + trxRes.Transaction.Value))
+		w.store.History.addActivity(sender, amt, trxRes)
 	}
 
 	if receiver != nil {
 		if w.store.Vault.Contains(*receiver) {
-			amount := trxRes.Transaction.Value
-			w.store.History.addActivity(*receiver, amount, trxRes)
+			amt := amount.Amount(trxRes.Transaction.Value)
+			w.store.History.addActivity(*receiver, amt, trxRes)
 		}
 	}
 
